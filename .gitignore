@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+samples/
+.claude/
+.codex/
+.cursor/
+openspec/
+pose_landmarker_lite.task
