@@ -1,3 +1,4 @@
+import os
 import streamlit as st
 from analyzer import (
     analyze_side_video, analyze_front_video,
@@ -10,11 +11,22 @@ from feedback import generate_feedback, CRITERIA
 # ---------------------------------------------------------------------------
 # Supabase 이메일 인증 + 승인 관리
 # ---------------------------------------------------------------------------
-ADMIN_EMAILS = st.secrets.get("supabase", {}).get("admin_emails", [])
+def _get_config(section, key, default=""):
+    """st.secrets (Streamlit Cloud) 또는 os.environ (Render) 에서 설정 읽기"""
+    try:
+        return st.secrets.get(section, {}).get(key, default)
+    except Exception:
+        pass
+    env_key = f"{section.upper()}_{key.upper()}"
+    return os.environ.get(env_key, default)
+
+ADMIN_EMAILS = _get_config("supabase", "admin_emails", [])
+if isinstance(ADMIN_EMAILS, str):
+    ADMIN_EMAILS = [e.strip() for e in ADMIN_EMAILS.split(",")]
 
 def _init_supabase():
-    url = st.secrets.get("supabase", {}).get("url", "")
-    key = st.secrets.get("supabase", {}).get("key", "")
+    url = _get_config("supabase", "url")
+    key = _get_config("supabase", "key")
     if url and key:
         from supabase import create_client
         return create_client(url, key)
