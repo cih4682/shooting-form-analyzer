@@ -142,49 +142,49 @@ def _show_menu():
     if st.session_state.get("page", "analyzer") == "admin" and is_admin:
         return "admin"
 
-    # 메뉴 스타일
-    st.markdown("""
-    <style>
-    .nav-items button {
-        background: none !important; border: none !important;
-        color: #fff !important; font-size: 0.85rem !important;
-        font-weight: 500 !important; padding: 6px 16px !important;
-        min-height: 0 !important;
-        font-family: 'Pretendard Variable', sans-serif !important;
-    }
-    .nav-items button:hover { color: #00D4AA !important; }
-    .nav-items button p { color: #fff !important; }
-    .nav-items button:hover p { color: #00D4AA !important; }
-    </style>
-    """, unsafe_allow_html=True)
+    # 좌측 상단 ☰
+    col_menu, _ = st.columns([1, 8])
+    with col_menu:
+        st.markdown("""
+        <style>
+        .menu-btn {
+            background: none !important; border: none !important;
+            color: #fff !important; font-size: 1.6rem !important;
+            cursor: pointer; padding: 4px 12px !important;
+            font-family: 'Pretendard Variable', sans-serif !important;
+        }
+        .menu-dropdown {
+            background: #1a1a2e; border: 1px solid #2A2A3A;
+            border-radius: 12px; padding: 8px 0; margin-top: 4px;
+            font-family: 'Pretendard Variable', sans-serif !important;
+        }
+        .menu-item {
+            display: block; width: 100%; padding: 12px 24px;
+            color: #D0D0E0; font-size: 0.95rem; font-weight: 500;
+            text-align: left; border: none; background: none;
+            cursor: pointer; transition: background 0.2s;
+            font-family: 'Pretendard Variable', sans-serif !important;
+        }
+        .menu-item:hover { background: #2A2A3A; color: #00D4AA; }
+        </style>
+        """, unsafe_allow_html=True)
 
-    # ☰ 버튼
-    col_btn, _ = st.columns([1, 10])
-    with col_btn:
-        if st.button("☰", key="menu_toggle"):
+        if st.button("☰", key="menu_toggle", help="메뉴"):
             st.session_state["menu_open"] = not st.session_state.get("menu_open", False)
 
-    # 클릭 시 오른쪽에 메뉴 항목 표시
     if st.session_state.get("menu_open", False):
-        if is_admin:
-            c1, c2, c3, _ = st.columns([1, 1, 1, 6])
-        else:
-            c1, c3, _ = st.columns([1, 1, 8])
-            c2 = None
-
-        with c1:
-            if st.button("분석기", key="go_analyzer"):
+        col_drop, _ = st.columns([1, 8])
+        with col_drop:
+            if st.button("분석기", key="go_analyzer", use_container_width=True):
                 st.session_state["menu_open"] = False
                 st.session_state["page"] = "analyzer"
                 st.rerun()
-        if c2 is not None:
-            with c2:
-                if st.button("관리자 모드", key="go_admin"):
+            if is_admin:
+                if st.button("관리자 모드", key="go_admin", use_container_width=True):
                     st.session_state["menu_open"] = False
                     st.session_state["page"] = "admin"
                     st.rerun()
-        with c3:
-            if st.button("로그아웃", key="logout"):
+            if st.button("로그아웃", key="logout", use_container_width=True):
                 for key in list(st.session_state.keys()):
                     del st.session_state[key]
                 st.rerun()
