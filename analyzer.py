@@ -389,8 +389,15 @@ def draw_angle_comparison(frame, point_a, point_b, point_c,
                 cv2.FONT_HERSHEY_SIMPLEX, 0.8, (60, 76, 255), 2, cv2.LINE_AA)
 
     # 이상적 각도 (초록 = Ideal)
-    ideal_mid = (ideal_min + ideal_max) / 2
-    angle_diff = ideal_mid - actual_angle
+    # 범위 안이면 현재 각도 = 이상적 (차이 0)
+    # 범위 밖이면 가장 가까운 경계를 목표로 표시
+    if ideal_min <= actual_angle <= ideal_max:
+        ideal_target = actual_angle  # 이미 이상적
+    elif actual_angle < ideal_min:
+        ideal_target = ideal_min  # 더 펴야 함
+    else:
+        ideal_target = ideal_max  # 더 접어야 함
+    angle_diff = ideal_target - actual_angle
     ideal_c = _rotate_point(point_b, point_c, angle_diff)
     ideal_c_int = tuple(map(int, ideal_c))
     cv2.line(img, b, ideal_c_int, (0, 220, 100), 2, cv2.LINE_AA)
