@@ -135,28 +135,25 @@ def _check_approved():
     st.stop()
 
 def _show_menu():
-    """상단 메뉴 — 관리자만 메뉴 표시"""
+    """상단 바 — 관리자만 표시"""
     role = st.session_state.get("user_role", "")
     if role not in ("admin", "superadmin"):
         return "analyzer"
 
-    menu_col1, menu_col2, menu_col3 = st.columns([1, 6, 1])
-    with menu_col1:
-        if st.button("☰", key="menu_btn", help="메뉴"):
-            st.session_state["show_menu"] = not st.session_state.get("show_menu", False)
+    if st.session_state.get("page", "analyzer") == "admin":
+        return "admin"
 
-    if st.session_state.get("show_menu", False):
-        with menu_col1:
-            page = st.radio(
-                "메뉴", ["분석기", "관리자 모드", "로그아웃"],
-                label_visibility="collapsed",
-            )
-            if page == "로그아웃":
-                for key in list(st.session_state.keys()):
-                    del st.session_state[key]
-                st.rerun()
-            elif page == "관리자 모드":
-                return "admin"
+    # 분석기 페이지 — 우측 상단에 관리자/로그아웃 버튼
+    _, col_admin, col_logout = st.columns([6, 1, 1])
+    with col_admin:
+        if st.button("⚙️", key="go_admin", help="관리자 모드"):
+            st.session_state["page"] = "admin"
+            st.rerun()
+    with col_logout:
+        if st.button("🚪", key="logout", help="로그아웃"):
+            for key in list(st.session_state.keys()):
+                del st.session_state[key]
+            st.rerun()
     return "analyzer"
 
 def _admin_page():
@@ -180,8 +177,8 @@ def _admin_page():
     unsafe_allow_html=True)
 
     # 돌아가기 버튼
-    if st.button("← 분석기로 돌아가기", key="back_to_analyzer"):
-        st.session_state["show_menu"] = False
+    if st.button("← 돌아가기", key="back_to_analyzer"):
+        st.session_state["page"] = "analyzer"
         st.rerun()
 
     st.markdown("---")
