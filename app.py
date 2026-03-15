@@ -624,14 +624,16 @@ div[data-testid="stAlert"][data-baseweb*="info"] { display: none; }
         flex-wrap: nowrap !important;
     }
 
-    /* 관리자 모드 버튼 정사각형 */
+    /* 관리자 모드 — 탭 안 버튼+텍스트 축소 */
     div[data-testid="stTabs"] div[data-testid="stButton"] > button {
-        padding: 8px 0 !important;
+        padding: 4px 8px !important;
+        font-size: 0.6rem !important;
+        min-height: 28px !important;
+        border-radius: 6px !important;
+    }
+    div[data-testid="stTabs"] div[data-testid="stColumn"] p,
+    div[data-testid="stTabs"] div[data-testid="stColumn"] strong {
         font-size: 0.65rem !important;
-        min-height: 36px !important;
-        width: 36px !important;
-        height: 36px !important;
-        border-radius: 8px !important;
     }
 
     /* 업로드 영역 모바일 — 구름 좌측 + 3줄 */
