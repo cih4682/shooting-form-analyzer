@@ -79,16 +79,16 @@ div[data-testid="stRadio"] label:has(input:checked) {
     color: #000 !important;
 }
 
-/* 스코어 그리드 */
+/* 스코어 그리드: PC 한줄, 모바일 4열(4+4 or 4+3) */
 .score-grid {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 12px;
+    grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+    gap: 10px;
     margin-bottom: 12px;
 }
 @media (max-width: 768px) {
     .score-grid {
-        grid-template-columns: repeat(2, 1fr);
+        grid-template-columns: repeat(4, 1fr);
     }
 }
 
@@ -96,8 +96,8 @@ div[data-testid="stRadio"] label:has(input:checked) {
 .score-card {
     background: linear-gradient(145deg, #16161F, #1C1C28);
     border: 1px solid #2A2A3A;
-    border-radius: 16px;
-    padding: 20px 12px;
+    border-radius: 12px;
+    padding: 14px 6px;
     text-align: center;
     transition: transform 0.2s, box-shadow 0.2s;
 }
@@ -106,15 +106,18 @@ div[data-testid="stRadio"] label:has(input:checked) {
     box-shadow: 0 8px 24px rgba(0, 212, 170, 0.1);
 }
 .score-label {
-    font-size: 0.7rem;
+    font-size: 0.6rem;
     color: #8888A0;
     text-transform: uppercase;
-    letter-spacing: 1.2px;
+    letter-spacing: 0.8px;
     font-weight: 600;
-    margin-bottom: 6px;
+    margin-bottom: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 .score-value {
-    font-size: 2.2rem;
+    font-size: 1.6rem;
     font-weight: 800;
     line-height: 1;
     margin-bottom: 4px;
@@ -281,8 +284,9 @@ div[data-testid="stAlert"] { display: none; }
 @media (max-width: 768px) {
     .hero-title { font-size: 1.8rem; }
     .hero-subtitle { font-size: 0.85rem; }
-    .score-value { font-size: 2rem; }
-    .score-card { padding: 16px 12px; border-radius: 12px; }
+    .score-value { font-size: 1.4rem; }
+    .score-label { font-size: 0.55rem; letter-spacing: 0.5px; }
+    .score-card { padding: 10px 4px; border-radius: 10px; }
     .overall-circle { width: 110px; height: 110px; }
     .overall-number { font-size: 2.2rem; }
     .feedback-card { padding: 12px 14px; font-size: 0.88rem; }
