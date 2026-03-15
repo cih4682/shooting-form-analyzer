@@ -443,8 +443,8 @@ def draw_angle_comparison(frame, point_a, point_b, point_c,
     c = tuple(map(int, point_c))
 
     # --- 실제 각도: 초록색 선 + 호 ---
-    cv2.line(img, a, b, (0, 220, 100), 4, cv2.LINE_AA)
-    cv2.line(img, b, c, (0, 220, 100), 4, cv2.LINE_AA)
+    cv2.line(img, a, b, (60, 76, 255), 4, cv2.LINE_AA)
+    cv2.line(img, b, c, (60, 76, 255), 4, cv2.LINE_AA)
 
     # 호 반지름 (프레임 크기에 비례)
     arc_radius = int(min(w, h) * 0.06)
@@ -454,14 +454,14 @@ def draw_angle_comparison(frame, point_a, point_b, point_c,
     angle_bc = math.degrees(math.atan2(-(c[1] - b[1]), c[0] - b[0]))
 
     cv2.ellipse(img, b, (arc_radius, arc_radius), 0,
-                -angle_ba, -angle_bc, (0, 220, 100), 3, cv2.LINE_AA)
+                -angle_ba, -angle_bc, (60, 76, 255), 3, cv2.LINE_AA)
 
     # 실제 각도 숫자
     mid_angle_rad = math.radians((angle_ba + angle_bc) / 2)
     text_x = int(b[0] + (arc_radius + 25) * math.cos(mid_angle_rad))
     text_y = int(b[1] - (arc_radius + 25) * math.sin(mid_angle_rad))
     cv2.putText(img, f"{actual_angle}", (text_x - 20, text_y + 5),
-                cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 220, 100), 2, cv2.LINE_AA)
+                cv2.FONT_HERSHEY_SIMPLEX, 0.8, (60, 76, 255), 2, cv2.LINE_AA)
 
     # --- 이상적 각도: 빨간색 점선 ---
     ideal_mid = (ideal_min + ideal_max) / 2
@@ -472,38 +472,38 @@ def draw_angle_comparison(frame, point_a, point_b, point_c,
     ideal_c_int = tuple(map(int, ideal_c))
 
     # 빨간 점선 (실선 대신 짧은 선분으로 점선 효과)
-    cv2.line(img, b, ideal_c_int, (0, 0, 255), 2, cv2.LINE_AA)
+    cv2.line(img, b, ideal_c_int, (0, 220, 100), 2, cv2.LINE_AA)
 
     # 이상적 호
     angle_ideal_c = math.degrees(math.atan2(-(ideal_c[1] - b[1]), ideal_c[0] - b[0]))
     cv2.ellipse(img, b, (arc_radius + 8, arc_radius + 8), 0,
-                -angle_ba, -angle_ideal_c, (0, 0, 255), 2, cv2.LINE_AA)
+                -angle_ba, -angle_ideal_c, (0, 220, 100), 2, cv2.LINE_AA)
 
     # 이상적 각도 숫자
     mid_ideal_rad = math.radians((angle_ba + angle_ideal_c) / 2)
     text_ix = int(b[0] + (arc_radius + 50) * math.cos(mid_ideal_rad))
     text_iy = int(b[1] - (arc_radius + 50) * math.sin(mid_ideal_rad))
     cv2.putText(img, f"{ideal_mid:.0f}", (text_ix - 20, text_iy + 5),
-                cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2, cv2.LINE_AA)
+                cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 220, 100), 2, cv2.LINE_AA)
 
     # 관절 점
     for pt in [a, b, c]:
         cv2.circle(img, pt, 8, (255, 255, 255), -1, cv2.LINE_AA)
         cv2.circle(img, pt, 8, (0, 0, 0), 2, cv2.LINE_AA)
-    cv2.circle(img, ideal_c_int, 6, (0, 0, 255), -1, cv2.LINE_AA)
+    cv2.circle(img, ideal_c_int, 6, (0, 220, 100), -1, cv2.LINE_AA)
 
     # 범례
     legend_y = 40
     cv2.putText(img, f"{label}", (15, legend_y),
                 cv2.FONT_HERSHEY_SIMPLEX, 0.9, (255, 255, 255), 2, cv2.LINE_AA)
     legend_y += 35
-    cv2.rectangle(img, (15, legend_y - 12), (35, legend_y + 4), (0, 220, 100), -1)
+    cv2.rectangle(img, (15, legend_y - 12), (35, legend_y + 4), (60, 76, 255), -1)
     cv2.putText(img, f"You: {actual_angle}", (42, legend_y + 2),
-                cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 220, 100), 2)
+                cv2.FONT_HERSHEY_SIMPLEX, 0.6, (60, 76, 255), 2)
     legend_y += 28
-    cv2.rectangle(img, (15, legend_y - 12), (35, legend_y + 4), (0, 0, 255), -1)
+    cv2.rectangle(img, (15, legend_y - 12), (35, legend_y + 4), (0, 220, 100), -1)
     cv2.putText(img, f"Ideal: {ideal_min}-{ideal_max}", (42, legend_y + 2),
-                cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
+                cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 220, 100), 2)
 
     return cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
@@ -516,11 +516,11 @@ def draw_lean_comparison(frame, shoulder, hip, actual_angle, ideal_max, label=""
     hp = tuple(map(int, hip))
 
     # 실제 기울기 (초록)
-    cv2.line(img, hp, sh, (0, 220, 100), 4, cv2.LINE_AA)
+    cv2.line(img, hp, sh, (60, 76, 255), 4, cv2.LINE_AA)
 
     # 이상적: 엉덩이에서 수직으로 올라간 선 (빨강)
     ideal_top = (hp[0], hp[1] - abs(sh[1] - hp[1]))
-    cv2.line(img, hp, ideal_top, (0, 0, 255), 2, cv2.LINE_AA)
+    cv2.line(img, hp, ideal_top, (0, 220, 100), 2, cv2.LINE_AA)
 
     # 관절 점
     cv2.circle(img, sh, 8, (255, 255, 255), -1)
@@ -531,13 +531,13 @@ def draw_lean_comparison(frame, shoulder, hip, actual_angle, ideal_max, label=""
     cv2.putText(img, f"{label}", (15, legend_y),
                 cv2.FONT_HERSHEY_SIMPLEX, 0.9, (255, 255, 255), 2)
     legend_y += 35
-    cv2.rectangle(img, (15, legend_y - 12), (35, legend_y + 4), (0, 220, 100), -1)
+    cv2.rectangle(img, (15, legend_y - 12), (35, legend_y + 4), (60, 76, 255), -1)
     cv2.putText(img, f"You: {actual_angle}", (42, legend_y + 2),
-                cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 220, 100), 2)
+                cv2.FONT_HERSHEY_SIMPLEX, 0.6, (60, 76, 255), 2)
     legend_y += 28
-    cv2.rectangle(img, (15, legend_y - 12), (35, legend_y + 4), (0, 0, 255), -1)
+    cv2.rectangle(img, (15, legend_y - 12), (35, legend_y + 4), (0, 220, 100), -1)
     cv2.putText(img, f"Ideal: 0-{ideal_max}", (42, legend_y + 2),
-                cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
+                cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 220, 100), 2)
 
     return cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
@@ -555,15 +555,15 @@ def draw_shot_height_comparison(frame, landmarks, is_above_head):
 
     # 머리 위 기준선 (빨강)
     head_y = int(head_top_y)
-    cv2.line(img, (0, head_y), (w, head_y), (0, 0, 255), 2, cv2.LINE_AA)
+    cv2.line(img, (0, head_y), (w, head_y), (0, 220, 100), 2, cv2.LINE_AA)
     cv2.putText(img, "HEAD TOP", (15, head_y - 10),
-                cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
+                cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 220, 100), 2)
 
     # 손목 위치 (초록)
-    cv2.circle(img, wr_pt, 12, (0, 220, 100), -1, cv2.LINE_AA)
+    cv2.circle(img, wr_pt, 12, (60, 76, 255), -1, cv2.LINE_AA)
     cv2.circle(img, wr_pt, 12, (255, 255, 255), 2, cv2.LINE_AA)
     cv2.putText(img, "WRIST", (wr_pt[0] + 15, wr_pt[1] + 5),
-                cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 220, 100), 2)
+                cv2.FONT_HERSHEY_SIMPLEX, 0.6, (60, 76, 255), 2)
 
     # 범례
     legend_y = 40
@@ -571,14 +571,14 @@ def draw_shot_height_comparison(frame, landmarks, is_above_head):
                 cv2.FONT_HERSHEY_SIMPLEX, 0.9, (255, 255, 255), 2, cv2.LINE_AA)
     legend_y += 35
     status = "Above head" if is_above_head else "Below head"
-    color = (0, 220, 100) if is_above_head else (0, 0, 255)
+    color = (0, 220, 100) if is_above_head else (60, 76, 255)
     cv2.rectangle(img, (15, legend_y - 12), (35, legend_y + 4), color, -1)
     cv2.putText(img, f"You: {status}", (42, legend_y + 2),
                 cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
     legend_y += 28
-    cv2.rectangle(img, (15, legend_y - 12), (35, legend_y + 4), (0, 0, 255), -1)
+    cv2.rectangle(img, (15, legend_y - 12), (35, legend_y + 4), (0, 220, 100), -1)
     cv2.putText(img, "Ideal: Above head", (42, legend_y + 2),
-                cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
+                cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 220, 100), 2)
 
     return cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
@@ -593,7 +593,7 @@ def draw_shot_direction_comparison(frame, landmarks, direction_angle, prev_landm
 
     # 이상적 방향: 수직 위로 (빨강)
     ideal_end = (wr_pt[0], wr_pt[1] - arrow_len)
-    cv2.arrowedLine(img, wr_pt, ideal_end, (0, 0, 255), 3, cv2.LINE_AA, tipLength=0.3)
+    cv2.arrowedLine(img, wr_pt, ideal_end, (0, 220, 100), 3, cv2.LINE_AA, tipLength=0.3)
 
     # 실제 방향 (초록) — direction_angle 기준 (90°=위, 0°=앞)
     rad = math.radians(direction_angle)
@@ -601,7 +601,7 @@ def draw_shot_direction_comparison(frame, landmarks, direction_angle, prev_landm
         int(wr_pt[0] + arrow_len * math.cos(rad) * 0.3),  # 약간 앞으로
         int(wr_pt[1] - arrow_len * math.sin(rad)),  # 위로
     )
-    cv2.arrowedLine(img, wr_pt, actual_end, (0, 220, 100), 3, cv2.LINE_AA, tipLength=0.3)
+    cv2.arrowedLine(img, wr_pt, actual_end, (60, 76, 255), 3, cv2.LINE_AA, tipLength=0.3)
 
     cv2.circle(img, wr_pt, 8, (255, 255, 255), -1, cv2.LINE_AA)
 
@@ -610,13 +610,13 @@ def draw_shot_direction_comparison(frame, landmarks, direction_angle, prev_landm
     cv2.putText(img, "DIRECTION", (15, legend_y),
                 cv2.FONT_HERSHEY_SIMPLEX, 0.9, (255, 255, 255), 2, cv2.LINE_AA)
     legend_y += 35
-    cv2.rectangle(img, (15, legend_y - 12), (35, legend_y + 4), (0, 220, 100), -1)
+    cv2.rectangle(img, (15, legend_y - 12), (35, legend_y + 4), (60, 76, 255), -1)
     cv2.putText(img, f"You: {direction_angle}", (42, legend_y + 2),
-                cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 220, 100), 2)
+                cv2.FONT_HERSHEY_SIMPLEX, 0.6, (60, 76, 255), 2)
     legend_y += 28
-    cv2.rectangle(img, (15, legend_y - 12), (35, legend_y + 4), (0, 0, 255), -1)
+    cv2.rectangle(img, (15, legend_y - 12), (35, legend_y + 4), (0, 220, 100), -1)
     cv2.putText(img, "Ideal: 90 (straight up)", (42, legend_y + 2),
-                cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
+                cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 220, 100), 2)
 
     return cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
@@ -663,43 +663,43 @@ def draw_front_comparison(frame, landmarks, metric, actual_angle, ideal_max, lab
     if metric == "alignment":
         sh_pt = tuple(map(int, sh))
         el_pt = tuple(map(int, el))
-        cv2.line(img, sh_pt, el_pt, (0, 220, 100), 4, cv2.LINE_AA)
-        cv2.circle(img, sh_pt, 8, (0, 220, 100), -1)
-        cv2.circle(img, el_pt, 8, (0, 220, 100), -1)
+        cv2.line(img, sh_pt, el_pt, (60, 76, 255), 4, cv2.LINE_AA)
+        cv2.circle(img, sh_pt, 8, (60, 76, 255), -1)
+        cv2.circle(img, el_pt, 8, (60, 76, 255), -1)
         ideal_top = (sh_pt[0], sh_pt[1] - abs(el_pt[1] - sh_pt[1]))
-        cv2.line(img, sh_pt, ideal_top, (0, 0, 255), 2, cv2.LINE_AA)
-        cv2.circle(img, ideal_top, 6, (0, 0, 255), -1)
+        cv2.line(img, sh_pt, ideal_top, (0, 220, 100), 2, cv2.LINE_AA)
+        cv2.circle(img, ideal_top, 6, (0, 220, 100), -1)
 
     elif metric == "shoulder_level":
         r_sh = tuple(map(int, landmarks["r_shoulder"]))
         l_sh = tuple(map(int, landmarks["l_shoulder"]))
-        cv2.line(img, r_sh, l_sh, (0, 220, 100), 4, cv2.LINE_AA)
-        cv2.circle(img, r_sh, 8, (0, 220, 100), -1)
-        cv2.circle(img, l_sh, 8, (0, 220, 100), -1)
+        cv2.line(img, r_sh, l_sh, (60, 76, 255), 4, cv2.LINE_AA)
+        cv2.circle(img, r_sh, 8, (60, 76, 255), -1)
+        cv2.circle(img, l_sh, 8, (60, 76, 255), -1)
         mid_y = (r_sh[1] + l_sh[1]) // 2
-        cv2.line(img, (r_sh[0], mid_y), (l_sh[0], mid_y), (0, 0, 255), 2, cv2.LINE_AA)
+        cv2.line(img, (r_sh[0], mid_y), (l_sh[0], mid_y), (0, 220, 100), 2, cv2.LINE_AA)
 
     elif metric == "finger_direction":
         wr_pt = tuple(map(int, wr))
         idx_pt = tuple(map(int, idx))
-        cv2.line(img, wr_pt, idx_pt, (0, 220, 100), 4, cv2.LINE_AA)
-        cv2.circle(img, wr_pt, 8, (0, 220, 100), -1)
-        cv2.circle(img, idx_pt, 8, (0, 220, 100), -1)
+        cv2.line(img, wr_pt, idx_pt, (60, 76, 255), 4, cv2.LINE_AA)
+        cv2.circle(img, wr_pt, 8, (60, 76, 255), -1)
+        cv2.circle(img, idx_pt, 8, (60, 76, 255), -1)
         ideal_top = (wr_pt[0], wr_pt[1] - abs(idx_pt[1] - wr_pt[1]))
-        cv2.line(img, wr_pt, ideal_top, (0, 0, 255), 2, cv2.LINE_AA)
-        cv2.circle(img, ideal_top, 6, (0, 0, 255), -1)
+        cv2.line(img, wr_pt, ideal_top, (0, 220, 100), 2, cv2.LINE_AA)
+        cv2.circle(img, ideal_top, 6, (0, 220, 100), -1)
 
     # 범례
     legend_y = 40
     cv2.putText(img, label, (15, legend_y),
                 cv2.FONT_HERSHEY_SIMPLEX, 0.9, (255, 255, 255), 2, cv2.LINE_AA)
     legend_y += 35
-    cv2.rectangle(img, (15, legend_y - 12), (35, legend_y + 4), (0, 220, 100), -1)
+    cv2.rectangle(img, (15, legend_y - 12), (35, legend_y + 4), (60, 76, 255), -1)
     cv2.putText(img, f"You: {actual_angle}", (42, legend_y + 2),
-                cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 220, 100), 2)
+                cv2.FONT_HERSHEY_SIMPLEX, 0.6, (60, 76, 255), 2)
     legend_y += 28
-    cv2.rectangle(img, (15, legend_y - 12), (35, legend_y + 4), (0, 0, 255), -1)
+    cv2.rectangle(img, (15, legend_y - 12), (35, legend_y + 4), (0, 220, 100), -1)
     cv2.putText(img, f"Ideal: 0-{ideal_max}", (42, legend_y + 2),
-                cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
+                cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 220, 100), 2)
 
     return cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
