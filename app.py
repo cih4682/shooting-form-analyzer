@@ -25,8 +25,9 @@ def _init_supabase():
     return None
 
 def _get_login_url():
-    """Google OAuth 로그인 URL 생성 — Supabase 직접 URL 사용"""
-    return f"{SUPABASE_URL}/auth/v1/authorize?provider=google"
+    """Google OAuth 로그인 URL 생성 — PKCE flow로 code를 query param으로 받음"""
+    redirect = "https://shooting-form-analyzer.streamlit.app"
+    return f"{SUPABASE_URL}/auth/v1/authorize?provider=google&redirect_to={redirect}&flow_type=pkce"
 
 def _check_auth():
     """인증 상태 확인 — 로그인 안 됐으면 로그인 버튼 표시 후 stop"""
@@ -34,47 +35,26 @@ def _check_auth():
     if not supabase:
         return  # secrets 없으면 인증 없이 사용 (로컬 개발용)
 
-    # URL에서 access_token 파라미터 확인 (OAuth callback)
-    params = st.query_params
-    access_token = params.get("access_token", None)
-    refresh_token = params.get("refresh_token", None)
-
     # 세션에 유저 정보가 있으면 통과
     if "user_email" in st.session_state:
         return
 
-    # access_token이 URL에 있으면 세션 설정
-    if access_token:
+    # PKCE flow: URL에서 code 파라미터 확인
+    params = st.query_params
+    code = params.get("code", None)
+
+    if code:
         try:
-            res = supabase.auth.set_session(access_token, refresh_token or "")
+            res = supabase.auth.exchange_code_for_session({"auth_code": code})
             user = res.user
             if user:
                 st.session_state["user_email"] = user.email
                 st.session_state["user_name"] = user.user_metadata.get("full_name", user.email)
                 st.query_params.clear()
                 st.rerun()
-        except Exception:
-            pass
-
-    # fragment에서 토큰 추출 (Supabase OAuth는 hash fragment로 반환)
-    # Streamlit은 fragment를 직접 못 읽으므로 JS로 파싱
-    st.markdown("""
-    <script>
-    const hash = window.location.hash.substring(1);
-    if (hash) {
-        const params = new URLSearchParams(hash);
-        const accessToken = params.get('access_token');
-        const refreshToken = params.get('refresh_token');
-        if (accessToken) {
-            const url = new URL(window.location);
-            url.searchParams.set('access_token', accessToken);
-            url.searchParams.set('refresh_token', refreshToken || '');
-            url.hash = '';
-            window.location.replace(url.toString());
-        }
-    }
-    </script>
-    """, unsafe_allow_html=True)
+        except Exception as e:
+            st.error(f"로그인 처리 중 오류: {e}")
+            st.query_params.clear()
 
     # 로그인 버튼 표시
     login_url = _get_login_url()
