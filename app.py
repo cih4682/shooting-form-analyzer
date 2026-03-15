@@ -82,8 +82,9 @@ div[data-testid="stRadio"] > div {
     background: #16161F;
     border-radius: 12px;
     padding: 4px;
-    display: flex !important;
-    justify-content: center !important;
+    display: inline-flex !important;
+    width: fit-content !important;
+    margin: 0 auto !important;
 }
 div[data-testid="stRadio"] label {
     padding: 10px 32px !important;
