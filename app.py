@@ -24,13 +24,13 @@ def _init_supabase():
         return create_client(SUPABASE_URL, SUPABASE_KEY)
     return None
 
-def _get_login_url(supabase_client):
-    """Google OAuth 로그인 URL 생성"""
-    res = supabase_client.auth.sign_in_with_oauth({
-        "provider": "google",
-        "options": {"redirect_to": st.secrets.get("supabase", {}).get("redirect_url", "")}
-    })
-    return res.url if res else None
+def _get_login_url():
+    """Google OAuth 로그인 URL 생성 — Supabase 직접 URL 사용"""
+    redirect = st.secrets.get("supabase", {}).get("redirect_url", "")
+    url = f"{SUPABASE_URL}/auth/v1/authorize?provider=google"
+    if redirect:
+        url += f"&redirect_to={redirect}"
+    return url
 
 def _check_auth():
     """인증 상태 확인 — 로그인 안 됐으면 로그인 버튼 표시 후 stop"""
@@ -81,7 +81,7 @@ def _check_auth():
     """, unsafe_allow_html=True)
 
     # 로그인 버튼 표시
-    login_url = _get_login_url(supabase)
+    login_url = _get_login_url()
     if login_url:
         st.markdown("""
         <div style="text-align:center; padding: 80px 20px;">
