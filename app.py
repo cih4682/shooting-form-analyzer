@@ -25,9 +25,8 @@ def _init_supabase():
     return None
 
 def _get_login_url():
-    """Google OAuth 로그인 URL 생성 — PKCE flow로 code를 query param으로 받음"""
-    redirect = "https://shooting-form-analyzer.streamlit.app"
-    return f"{SUPABASE_URL}/auth/v1/authorize?provider=google&redirect_to={redirect}&flow_type=pkce"
+    """Google OAuth 로그인 URL 생성"""
+    return f"{SUPABASE_URL}/auth/v1/authorize?provider=google"
 
 def _check_auth():
     """인증 상태 확인 — 로그인 안 됐으면 로그인 버튼 표시 후 stop"""
@@ -39,13 +38,13 @@ def _check_auth():
     if "user_email" in st.session_state:
         return
 
-    # PKCE flow: URL에서 code 파라미터 확인
+    # URL query param에서 access_token 확인 (JS가 hash → query로 변환)
     params = st.query_params
-    code = params.get("code", None)
+    access_token = params.get("access_token", None)
 
-    if code:
+    if access_token:
         try:
-            res = supabase.auth.exchange_code_for_session({"auth_code": code})
+            res = supabase.auth.get_user(access_token)
             user = res.user
             if user:
                 st.session_state["user_email"] = user.email
@@ -55,6 +54,24 @@ def _check_auth():
         except Exception as e:
             st.error(f"로그인 처리 중 오류: {e}")
             st.query_params.clear()
+
+    # Hash fragment → query param 변환 JS (st.components.v1.html로 실행)
+    import streamlit.components.v1 as components
+    components.html("""
+    <script>
+    const hash = window.parent.location.hash.substring(1);
+    if (hash && hash.includes('access_token')) {
+        const params = new URLSearchParams(hash);
+        const accessToken = params.get('access_token');
+        if (accessToken) {
+            const url = new URL(window.parent.location);
+            url.searchParams.set('access_token', accessToken);
+            url.hash = '';
+            window.parent.location.replace(url.toString());
+        }
+    }
+    </script>
+    """, height=0)
 
     # 로그인 버튼 표시
     login_url = _get_login_url()
