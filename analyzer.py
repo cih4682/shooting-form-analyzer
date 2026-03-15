@@ -556,3 +556,61 @@ def draw_front_skeleton(frame, landmarks, angles_text=None):
                         cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
             y_offset += 30
     return cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+
+
+def draw_front_comparison(frame, landmarks, metric, actual_angle, ideal_max, label=""):
+    """
+    정면 프레임에서 alignment / shoulder_level / finger_direction 비교 시각화.
+    초록 = 실제, 빨강 = 이상적(수직/수평).
+    """
+    img = frame.copy()
+
+    # 슛 팔 결정
+    if landmarks["r_wrist"][1] <= landmarks["l_wrist"][1]:
+        sh, el, wr, idx = landmarks["r_shoulder"], landmarks["r_elbow"], landmarks["r_wrist"], landmarks["r_index"]
+    else:
+        sh, el, wr, idx = landmarks["l_shoulder"], landmarks["l_elbow"], landmarks["l_wrist"], landmarks["l_index"]
+
+    if metric == "alignment":
+        sh_pt = tuple(map(int, sh))
+        el_pt = tuple(map(int, el))
+        cv2.line(img, sh_pt, el_pt, (0, 220, 100), 4, cv2.LINE_AA)
+        cv2.circle(img, sh_pt, 8, (0, 220, 100), -1)
+        cv2.circle(img, el_pt, 8, (0, 220, 100), -1)
+        ideal_top = (sh_pt[0], sh_pt[1] - abs(el_pt[1] - sh_pt[1]))
+        cv2.line(img, sh_pt, ideal_top, (0, 0, 255), 2, cv2.LINE_AA)
+        cv2.circle(img, ideal_top, 6, (0, 0, 255), -1)
+
+    elif metric == "shoulder_level":
+        r_sh = tuple(map(int, landmarks["r_shoulder"]))
+        l_sh = tuple(map(int, landmarks["l_shoulder"]))
+        cv2.line(img, r_sh, l_sh, (0, 220, 100), 4, cv2.LINE_AA)
+        cv2.circle(img, r_sh, 8, (0, 220, 100), -1)
+        cv2.circle(img, l_sh, 8, (0, 220, 100), -1)
+        mid_y = (r_sh[1] + l_sh[1]) // 2
+        cv2.line(img, (r_sh[0], mid_y), (l_sh[0], mid_y), (0, 0, 255), 2, cv2.LINE_AA)
+
+    elif metric == "finger_direction":
+        wr_pt = tuple(map(int, wr))
+        idx_pt = tuple(map(int, idx))
+        cv2.line(img, wr_pt, idx_pt, (0, 220, 100), 4, cv2.LINE_AA)
+        cv2.circle(img, wr_pt, 8, (0, 220, 100), -1)
+        cv2.circle(img, idx_pt, 8, (0, 220, 100), -1)
+        ideal_top = (wr_pt[0], wr_pt[1] - abs(idx_pt[1] - wr_pt[1]))
+        cv2.line(img, wr_pt, ideal_top, (0, 0, 255), 2, cv2.LINE_AA)
+        cv2.circle(img, ideal_top, 6, (0, 0, 255), -1)
+
+    # 범례
+    legend_y = 40
+    cv2.putText(img, label, (15, legend_y),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.9, (255, 255, 255), 2, cv2.LINE_AA)
+    legend_y += 35
+    cv2.rectangle(img, (15, legend_y - 12), (35, legend_y + 4), (0, 220, 100), -1)
+    cv2.putText(img, f"You: {actual_angle}", (42, legend_y + 2),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 220, 100), 2)
+    legend_y += 28
+    cv2.rectangle(img, (15, legend_y - 12), (35, legend_y + 4), (0, 0, 255), -1)
+    cv2.putText(img, f"Ideal: 0-{ideal_max}", (42, legend_y + 2),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
+
+    return cv2.cvtColor(img, cv2.COLOR_BGR2RGB)

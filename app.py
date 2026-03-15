@@ -6,7 +6,7 @@ import streamlit as st
 from analyzer import (
     analyze_side_video, analyze_front_video,
     draw_skeleton, draw_front_skeleton,
-    draw_angle_comparison, draw_lean_comparison,
+    draw_angle_comparison, draw_lean_comparison, draw_front_comparison,
 )
 from feedback import generate_feedback, CRITERIA
 
@@ -263,6 +263,17 @@ div[data-testid="stMetric"] { display: none; }
 
 /* 기본 info 박스 숨기기 (커스텀 사용) */
 div[data-testid="stAlert"] { display: none; }
+
+/* 모바일 반응형 */
+@media (max-width: 768px) {
+    .hero-title { font-size: 1.8rem; }
+    .hero-subtitle { font-size: 0.85rem; }
+    .score-value { font-size: 2rem; }
+    .score-card { padding: 16px 12px; border-radius: 12px; }
+    .overall-circle { width: 110px; height: 110px; }
+    .overall-number { font-size: 2.2rem; }
+    .feedback-card { padding: 12px 14px; font-size: 0.88rem; }
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -537,9 +548,22 @@ if analyze_btn and can_analyze:
                 render_feedback("DIRECTION", fb["shot_direction_feedback"], fb["shot_direction_score"])
 
         if front_result:
-            render_feedback("ALIGNMENT", fb["alignment_feedback"], fb["alignment_score"])
-            render_feedback("SHOULDERS", fb["shoulder_level_feedback"], fb["shoulder_level_score"])
-            render_feedback("FINGER", fb["finger_direction_feedback"], fb["finger_direction_score"])
+            fl = front_result["front_landmarks"]
+
+            align_img = draw_front_comparison(
+                front_result["front_frame"], fl, "alignment",
+                front_result["alignment_angle"], c["alignment"]["ideal_max"], "ALIGNMENT")
+            render_feedback("ALIGNMENT", fb["alignment_feedback"], fb["alignment_score"], align_img)
+
+            shoulder_img = draw_front_comparison(
+                front_result["front_frame"], fl, "shoulder_level",
+                front_result["shoulder_level_angle"], c["shoulder_level"]["ideal_max"], "SHOULDERS")
+            render_feedback("SHOULDERS", fb["shoulder_level_feedback"], fb["shoulder_level_score"], shoulder_img)
+
+            finger_img = draw_front_comparison(
+                front_result["front_frame"], fl, "finger_direction",
+                front_result["finger_direction_angle"], c["finger_direction"]["ideal_max"], "FINGER")
+            render_feedback("FINGER", fb["finger_direction_feedback"], fb["finger_direction_score"], finger_img)
 
 # ---------------------------------------------------------------------------
 # 하단
