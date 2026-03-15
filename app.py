@@ -142,52 +142,31 @@ def _show_menu():
     if st.session_state.get("page", "analyzer") == "admin" and is_admin:
         return "admin"
 
-    # 메뉴 스타일
-    st.markdown("""
-    <style>
-    .nav-items button {
-        background: none !important; border: none !important;
-        color: #fff !important; font-size: 0.85rem !important;
-        font-weight: 500 !important; padding: 6px 16px !important;
-        min-height: 0 !important;
-        font-family: 'Pretendard Variable', sans-serif !important;
-    }
-    .nav-items button:hover { color: #00D4AA !important; }
-    .nav-items button p { color: #fff !important; }
-    .nav-items button:hover p { color: #00D4AA !important; }
-    </style>
-    """, unsafe_allow_html=True)
+    # 상단 메뉴 바 — ☰ + 메뉴 항목 한 줄
+    if is_admin:
+        cols = st.columns([1, 2, 2, 2, 8])
+        col_hamburger, col_analyzer, col_admin, col_logout, _ = cols
+    else:
+        cols = st.columns([1, 2, 2, 10])
+        col_hamburger, col_analyzer, col_logout, _ = cols
+        col_admin = None
 
-    # ☰ 버튼
-    col_btn, _ = st.columns([1, 10])
-    with col_btn:
-        if st.button("☰", key="menu_toggle"):
-            st.session_state["menu_open"] = not st.session_state.get("menu_open", False)
-
-    # 클릭 시 오른쪽에 메뉴 항목 표시
-    if st.session_state.get("menu_open", False):
-        if is_admin:
-            c1, c2, c3, _ = st.columns([1, 1, 1, 6])
-        else:
-            c1, c3, _ = st.columns([1, 1, 8])
-            c2 = None
-
-        with c1:
-            if st.button("분석기", key="go_analyzer"):
-                st.session_state["menu_open"] = False
-                st.session_state["page"] = "analyzer"
+    with col_hamburger:
+        st.markdown('<div style="font-size:1.4rem; color:#fff; padding:6px 0;">☰</div>', unsafe_allow_html=True)
+    with col_analyzer:
+        if st.button("분석기", key="go_analyzer"):
+            st.session_state["page"] = "analyzer"
+            st.rerun()
+    if col_admin is not None:
+        with col_admin:
+            if st.button("관리자 모드", key="go_admin"):
+                st.session_state["page"] = "admin"
                 st.rerun()
-        if c2 is not None:
-            with c2:
-                if st.button("관리자 모드", key="go_admin"):
-                    st.session_state["menu_open"] = False
-                    st.session_state["page"] = "admin"
-                    st.rerun()
-        with c3:
-            if st.button("로그아웃", key="logout"):
-                for key in list(st.session_state.keys()):
-                    del st.session_state[key]
-                st.rerun()
+    with col_logout:
+        if st.button("로그아웃", key="logout"):
+            for key in list(st.session_state.keys()):
+                del st.session_state[key]
+            st.rerun()
 
     return "analyzer"
 
