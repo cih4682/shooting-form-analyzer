@@ -439,6 +439,7 @@ if analyze_btn and can_analyze:
             fb_kwargs["lean_angle"] = side_result["lean_angle"]
             if sport_key == "netball":
                 fb_kwargs["shot_height_above_head"] = side_result["shot_height_above_head"]
+                fb_kwargs["shot_height_in_front"] = side_result.get("shot_height_in_front", False)
                 fb_kwargs["shot_direction_angle"] = side_result["shot_direction_angle"]
         if front_result:
             fb_kwargs["alignment_angle"] = front_result["alignment_angle"]

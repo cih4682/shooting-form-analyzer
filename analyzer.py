@@ -239,13 +239,26 @@ def analyze_side_video(video_bytes: bytes):
     result["setup_landmarks"] = setup_ld
 
     # 넷볼 추가 지표
-    shot_height_ok = False
+    # 슛 시작 높이: 높이(y) + 위치(x) 모두 체크
+    # - y: 손목이 머리 위에 있는가
+    # - x: 손목이 코 x좌표에서 크게 벗어나지 않는가 (앞으로 나가면 ❌)
+    # 허용 x 편차: 머리 크기(코~눈 거리 × 3) 이내면 "위", 넘으면 "앞"
+    shot_height_above = False  # 높이 OK
+    shot_height_position = False  # 위치(앞/위) OK
     for _, ld in valid:
         elbow_ang = _calc_angle(ld["shoulder"], ld["elbow"], ld["wrist"])
-        if elbow_ang < 140 and ld["wrist"][1] < ld["head_top_y"]:
-            shot_height_ok = True
-            break
-    result["shot_height_above_head"] = shot_height_ok
+        if elbow_ang < 140:
+            # 높이 체크
+            if ld["wrist"][1] < ld["head_top_y"]:
+                shot_height_above = True
+                # 위치 체크: 손목 x가 코 x에서 머리 크기 이내인가
+                head_size = abs(ld["nose"][1] - ld["eye_y"]) * 3
+                x_diff = abs(ld["wrist"][0] - ld["nose"][0])
+                if x_diff < head_size:
+                    shot_height_position = True
+                    break
+    result["shot_height_above_head"] = shot_height_above and shot_height_position
+    result["shot_height_in_front"] = shot_height_above and not shot_height_position
 
     if release_idx > 0:
         prev_ld = valid[release_idx - 1][1]

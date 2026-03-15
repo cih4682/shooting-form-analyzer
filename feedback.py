@@ -198,9 +198,17 @@ def _your_form_lean(angle, score, sport):
     )
 
 
-def _your_form_shot_height(is_above_head):
+def _your_form_shot_height(is_above_head, is_in_front=False):
     if is_above_head:
         return "슛 시작 위치가 머리 위에 있어요. 완벽해요!"
+    if is_in_front:
+        return (
+            "공 높이는 충분하지만, 이마 '앞'에 있어요. 이마 '위'에 있어야 해요! "
+            "앞에 있으면 수비수가 블로킹할 수 있어요. "
+            "연습법: 거울 옆에서 측면을 보면서, 공이 이마 앞이 아니라 "
+            "정수리 위에 올라가 있는지 확인하세요. "
+            "팔꿈치를 얼굴 옆에 붙이고 공을 머리 위로 들어올리는 느낌이에요."
+        )
     return (
         "슛 시작 위치가 머리보다 낮아요. "
         "연습법: 공을 머리 위로 올린 상태에서 슛을 시작하세요. "
@@ -293,9 +301,15 @@ def generate_feedback(sport, **kwargs):
 
         if sport == "netball":
             above = kwargs.get("shot_height_above_head", False)
-            result["shot_height_score"] = 100 if above else 30
+            in_front = kwargs.get("shot_height_in_front", False)
+            if above:
+                result["shot_height_score"] = 100
+            elif in_front:
+                result["shot_height_score"] = 50  # 높이는 OK지만 앞에 있음
+            else:
+                result["shot_height_score"] = 30  # 높이도 부족
             result["shot_height_best"] = BEST_TEXT["netball"]["shot_height"]
-            result["shot_height_yourform"] = _your_form_shot_height(above)
+            result["shot_height_yourform"] = _your_form_shot_height(above, in_front)
 
             sd = kwargs.get("shot_direction_angle", 90)
             result["shot_direction_score"] = calc_score(sd, c["shot_direction"]["ideal_min"], c["shot_direction"]["ideal_max"])
