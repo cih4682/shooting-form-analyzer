@@ -624,15 +624,19 @@ div[data-testid="stAlert"][data-baseweb*="info"] { display: none; }
         flex-wrap: nowrap !important;
     }
 
-    /* 관리자 모드 — 탭 안 버튼+텍스트 축소 */
+    /* 관리자 모드 — 컬럼 강제 한줄 + 축소 */
+    div[data-testid="stTabs"] div[data-testid="stHorizontalBlock"] {
+        flex-wrap: nowrap !important;
+        gap: 4px !important;
+    }
     div[data-testid="stTabs"] div[data-testid="stButton"] > button {
-        padding: 4px 8px !important;
+        padding: 4px 6px !important;
         font-size: 0.6rem !important;
         min-height: 28px !important;
         border-radius: 6px !important;
     }
     div[data-testid="stTabs"] div[data-testid="stColumn"] p,
-    div[data-testid="stTabs"] div[data-testid="stColumn"] strong {
+    div[data-testid="stTabs"] div[data-testid="stColumn"] span {
         font-size: 0.65rem !important;
     }
 
