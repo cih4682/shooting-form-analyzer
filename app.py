@@ -277,8 +277,8 @@ div[data-testid="stButton"] > button:disabled {
 /* metric 위젯 숨기기 (커스텀 카드 사용) */
 div[data-testid="stMetric"] { display: none; }
 
-/* 기본 info 박스 숨기기 (커스텀 사용) */
-div[data-testid="stAlert"] { display: none; }
+/* 기본 info 박스 숨기기 (커스텀 사용) — error는 표시 */
+div[data-testid="stAlert"][data-baseweb*="info"] { display: none; }
 
 /* 모바일 반응형 */
 @media (max-width: 768px) {
@@ -409,7 +409,12 @@ if analyze_btn and can_analyze:
             side_bytes = side_video.read()
             side_result = analyze_side_video(side_bytes)
         if side_result["error"]:
-            st.error(side_result["error"])
+            st.markdown(
+                f'<div style="background:#2D1117;border:1px solid #FF4757;border-radius:8px;'
+                f'padding:12px 16px;color:#FF6B7A;margin:8px 0;">'
+                f'⚠️ 측면 영상: {side_result["error"]}</div>',
+                unsafe_allow_html=True,
+            )
             side_result = None
 
     # --- 정면 분석 ---
@@ -419,7 +424,12 @@ if analyze_btn and can_analyze:
             front_bytes = front_video.read()
             front_result = analyze_front_video(front_bytes)
         if front_result["error"]:
-            st.error(front_result["error"])
+            st.markdown(
+                f'<div style="background:#2D1117;border:1px solid #FF4757;border-radius:8px;'
+                f'padding:12px 16px;color:#FF6B7A;margin:8px 0;">'
+                f'⚠️ 정면 영상: {front_result["error"]}</div>',
+                unsafe_allow_html=True,
+            )
             front_result = None
 
     if side_result or front_result:

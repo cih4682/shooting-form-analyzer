@@ -320,9 +320,12 @@ def analyze_front_video(video_bytes: bytes):
     for fi, frame, raw_lms in raw_frames:
         if raw_lms is None:
             continue
-        # 11~16: 양쪽 어깨/팔꿈치/손목, 19~20: 양쪽 검지
-        keys_to_check = [11, 12, 13, 14, 15, 16]
-        if all(raw_lms[k].visibility >= MIN_VISIBILITY for k in keys_to_check):
+        # 정면에서는 팔이 겹쳐 visibility가 낮을 수 있으므로 기준 완화
+        # 어깨(11,12)만 필수, 나머지는 0.3 이상이면 허용
+        keys_must = [11, 12]  # 양쪽 어깨
+        keys_soft = [13, 14, 15, 16]  # 팔꿈치/손목
+        if (all(raw_lms[k].visibility >= MIN_VISIBILITY for k in keys_must)
+                and all(raw_lms[k].visibility >= 0.3 for k in keys_soft)):
             h, w = frame.shape[:2]
             ld = {
                 "r_shoulder": (raw_lms[12].x * w, raw_lms[12].y * h),
