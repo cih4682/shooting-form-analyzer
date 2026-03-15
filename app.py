@@ -306,6 +306,19 @@ div[data-testid="stAlert"][data-baseweb*="info"] { display: none; }
     .overall-circle { width: 110px; height: 110px; }
     .overall-number { font-size: 2.2rem; }
     .feedback-card { padding: 12px 14px; font-size: 0.88rem; }
+
+    /* 업로드 영역 모바일 — 글씨 줄이고 두줄로 */
+    div[data-testid="stFileUploader"] section > div {
+        flex-direction: column !important;
+        align-items: center !important;
+        gap: 4px !important;
+    }
+    div[data-testid="stFileUploader"] section span,
+    div[data-testid="stFileUploader"] section small,
+    div[data-testid="stFileUploader"] section p {
+        font-size: 0.7rem !important;
+        text-align: center !important;
+    }
 }
 </style>
 """, unsafe_allow_html=True)
