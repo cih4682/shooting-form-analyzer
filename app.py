@@ -322,22 +322,19 @@ def render_score_grid(items):
     cards = "".join(_score_card_html(label, score) for label, score in items)
     st.markdown(f'<div class="score-grid">{cards}</div>', unsafe_allow_html=True)
 
-def render_feedback(title, text, score, comparison_img=None):
+def render_feedback(title, score, best_text, yourform_text, comparison_img=None):
     cls = get_score_class(score)
-    color_map = {"perfect": "#00D4AA", "good": "#00A3FF", "warning": "#FFB800", "danger": "#FF4757"}
-    if comparison_img is not None:
-        with st.expander(f"{title} — {score}점  (클릭하여 자세 비교 보기)", expanded=False):
+    with st.expander(f"{title} — {score}점  (클릭하여 자세 비교 보기)", expanded=False):
+        if comparison_img is not None:
             st.image(comparison_img, use_container_width=True)
-            st.markdown(f"""
-            <div class="feedback-card feedback-{cls}">
-                {text}
-            </div>
-            """, unsafe_allow_html=True)
-    else:
         st.markdown(f"""
-        <div class="feedback-card feedback-{cls}">
-            <div class="feedback-title" style="color:{color_map[cls]};">{title}</div>
-            {text}
+        <div style="border-left:3px solid #00D4AA; padding:10px 14px; margin:8px 0; background:#0D1F17; border-radius:0 8px 8px 0;">
+            <div style="color:#00D4AA; font-weight:700; font-size:0.85rem; letter-spacing:1px; margin-bottom:4px;">BEST</div>
+            <div style="color:#C0E8D8; font-size:0.9rem; line-height:1.6;">{best_text}</div>
+        </div>
+        <div style="border-left:3px solid #FF4757; padding:10px 14px; margin:8px 0; background:#1F0D10; border-radius:0 8px 8px 0;">
+            <div style="color:#FF4757; font-weight:700; font-size:0.85rem; letter-spacing:1px; margin-bottom:4px;">YOUR FORM</div>
+            <div style="color:#E8C0C4; font-size:0.9rem; line-height:1.6;">{yourform_text}</div>
         </div>
         """, unsafe_allow_html=True)
 
@@ -554,42 +551,26 @@ if analyze_btn and can_analyze:
                 c["elbow"]["ideal_min"], c["elbow"]["ideal_max"],
                 label="ELBOW",
             )
-            render_feedback("ELBOW", fb["elbow_feedback"], fb["elbow_score"], elbow_img)
+            render_feedback("ELBOW", fb["elbow_score"], fb["elbow_best"], fb["elbow_yourform"], elbow_img)
 
-            # 무릎 비교 이미지
             knee_img = draw_angle_comparison(
-                side_result["setup_frame"],
-                sl["hip"], sl["knee"], sl["ankle"],
-                side_result["knee_angle"],
-                c["knee"]["ideal_min"], c["knee"]["ideal_max"],
-                label="KNEE",
-            )
-            render_feedback("KNEE", fb["knee_feedback"], fb["knee_score"], knee_img)
+                side_result["setup_frame"], sl["hip"], sl["knee"], sl["ankle"],
+                side_result["knee_angle"], c["knee"]["ideal_min"], c["knee"]["ideal_max"], label="KNEE")
+            render_feedback("KNEE", fb["knee_score"], fb["knee_best"], fb["knee_yourform"], knee_img)
 
-            # 상체 기울기 비교 이미지
             lean_img = draw_lean_comparison(
-                side_result["release_frame"],
-                rl["shoulder"], rl["hip"],
-                side_result["lean_angle"],
-                c["lean"]["ideal_max"],
-                label="POSTURE",
-            )
-            render_feedback("POSTURE", fb["lean_feedback"], fb["lean_score"], lean_img)
+                side_result["release_frame"], rl["shoulder"], rl["hip"],
+                side_result["lean_angle"], c["lean"]["ideal_max"], label="POSTURE")
+            render_feedback("POSTURE", fb["lean_score"], fb["lean_best"], fb["lean_yourform"], lean_img)
 
             if sport_key == "netball":
-                # 슛 높이 비교 이미지
                 height_img = draw_shot_height_comparison(
-                    side_result["setup_frame"], sl,
-                    side_result["shot_height_above_head"],
-                )
-                render_feedback("SHOT HEIGHT", fb["shot_height_feedback"], fb["shot_height_score"], height_img)
+                    side_result["setup_frame"], sl, side_result["shot_height_above_head"])
+                render_feedback("SHOT HEIGHT", fb["shot_height_score"], fb["shot_height_best"], fb["shot_height_yourform"], height_img)
 
-                # 슛 방향 비교 이미지
                 direction_img = draw_shot_direction_comparison(
-                    side_result["release_frame"], rl,
-                    side_result["shot_direction_angle"],
-                )
-                render_feedback("DIRECTION", fb["shot_direction_feedback"], fb["shot_direction_score"], direction_img)
+                    side_result["release_frame"], rl, side_result["shot_direction_angle"])
+                render_feedback("DIRECTION", fb["shot_direction_score"], fb["shot_direction_best"], fb["shot_direction_yourform"], direction_img)
 
         if front_result:
             fl = front_result["front_landmarks"]
@@ -597,17 +578,17 @@ if analyze_btn and can_analyze:
             align_img = draw_front_comparison(
                 front_result["front_frame"], fl, "alignment",
                 front_result["alignment_angle"], c["alignment"]["ideal_max"], "ALIGNMENT")
-            render_feedback("ALIGNMENT", fb["alignment_feedback"], fb["alignment_score"], align_img)
+            render_feedback("ALIGNMENT", fb["alignment_score"], fb["alignment_best"], fb["alignment_yourform"], align_img)
 
             shoulder_img = draw_front_comparison(
                 front_result["front_frame"], fl, "shoulder_level",
                 front_result["shoulder_level_angle"], c["shoulder_level"]["ideal_max"], "SHOULDERS")
-            render_feedback("SHOULDERS", fb["shoulder_level_feedback"], fb["shoulder_level_score"], shoulder_img)
+            render_feedback("SHOULDERS", fb["shoulder_level_score"], fb["shoulder_level_best"], fb["shoulder_level_yourform"], shoulder_img)
 
             finger_img = draw_front_comparison(
                 front_result["front_frame"], fl, "finger_direction",
                 front_result["finger_direction_angle"], c["finger_direction"]["ideal_max"], "FINGER")
-            render_feedback("FINGER", fb["finger_direction_feedback"], fb["finger_direction_score"], finger_img)
+            render_feedback("FINGER", fb["finger_direction_score"], fb["finger_direction_best"], fb["finger_direction_yourform"], finger_img)
 
 # ---------------------------------------------------------------------------
 # 하단
