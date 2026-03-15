@@ -87,14 +87,14 @@ def _check_auth():
                  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
                  margin-bottom:8px;">Shot Form Analyzer</div>
             <div style="color:#8888A0; margin-bottom:32px;">AI 기반 슛 자세 분석</div>
-            <a href="{url}" target="_self" style="
+            <button onclick="window.top.location.href='{url}'" style="
                 display:inline-block; padding:14px 40px;
                 background: linear-gradient(135deg, #00D4AA, #00A3FF);
                 color:#000; font-weight:700; font-size:1rem;
-                border-radius:12px; text-decoration:none;
+                border-radius:12px; border:none; cursor:pointer;
                 transition: opacity 0.2s;">
                 Google 계정으로 로그인
-            </a>
+            </button>
         </div>
         """.replace("{url}", login_url), unsafe_allow_html=True)
     st.stop()
