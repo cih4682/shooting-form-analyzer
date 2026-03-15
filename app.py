@@ -310,6 +310,11 @@ div[data-testid="stAlert"][data-baseweb*="info"] { display: none; }
         flex-wrap: nowrap !important;
         white-space: nowrap !important;
     }
+    div[data-testid="stFileUploader"] section span,
+    div[data-testid="stFileUploader"] section small,
+    div[data-testid="stFileUploader"] section p {
+        font-size: 0.75rem !important;
+    }
 }
 
 /* 모바일 반응형 */
