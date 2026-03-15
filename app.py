@@ -25,20 +25,35 @@ st.set_page_config(
 # ---------------------------------------------------------------------------
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css');
 
-/* 전역 폰트 */
-html, body, [class*="css"] {
-    font-family: 'Inter', sans-serif;
+/* 전역 폰트 — Pretendard */
+html, body, [class*="css"], .stMarkdown, .stText,
+div[data-testid="stExpander"], button, input, textarea, select,
+.score-label, .score-value, .hero-title, .hero-subtitle,
+.feedback-card, .guide-box, .privacy-note, .overall-number,
+.overall-label, .overall-grade, .frame-label {
+    font-family: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont,
+                 system-ui, Roboto, 'Helvetica Neue', 'Segoe UI', 'Apple SD Gothic Neo',
+                 'Noto Sans KR', 'Malgun Gothic', 'Apple Color Emoji', 'Segoe UI Emoji',
+                 'Segoe UI Symbol', sans-serif !important;
 }
 
-/* Streamlit 하단 바, 메뉴, GitHub 아이콘 숨기기 */
-footer {visibility: hidden;}
-#MainMenu {visibility: hidden;}
-header {visibility: hidden;}
-div[data-testid="stStatusWidget"] {visibility: hidden;}
+/* Streamlit 기본 UI 완전 제거 */
+footer {display: none !important;}
+#MainMenu {display: none !important;}
+header {display: none !important;}
+div[data-testid="stStatusWidget"] {display: none !important;}
 .viewerBadge_container__r5tak {display: none !important;}
 .stDeployButton {display: none !important;}
+div[data-testid="stToolbar"] {display: none !important;}
+div[data-testid="stDecoration"] {display: none !important;}
+.reportview-container .main footer {display: none !important;}
+div[data-testid="manage-app-button"] {display: none !important;}
+._container_gzau3_1 {display: none !important;}
+._profileContainer_gzau3_53 {display: none !important;}
+[data-testid="stAppViewBlockContainer"] > div:last-child a[href*="streamlit"] {display: none !important;}
+iframe[title="streamlit_badge"] {display: none !important;}
 
 /* 헤더 영역 */
 .hero-title {
