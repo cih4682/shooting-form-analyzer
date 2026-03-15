@@ -1,9 +1,4 @@
-"""
-app.py — Shot Form Analyzer (Streamlit)
-"""
-
 import streamlit as st
-from streamlit_google_auth import Authenticate
 from analyzer import (
     analyze_side_video, analyze_front_video,
     draw_skeleton, draw_front_skeleton,
@@ -13,7 +8,7 @@ from analyzer import (
 from feedback import generate_feedback, CRITERIA
 
 # ---------------------------------------------------------------------------
-# Google 인증 + Supabase 승인
+# Supabase 이메일 인증 + 승인 관리
 # ---------------------------------------------------------------------------
 ADMIN_EMAILS = st.secrets.get("supabase", {}).get("admin_emails", [])
 
@@ -26,54 +21,67 @@ def _init_supabase():
     return None
 
 def _check_auth():
-    """Google 로그인 확인"""
-    # secrets 없으면 인증 없이 사용 (로컬 개발용)
-    google_auth = st.secrets.get("google_auth", {})
-    if not google_auth.get("client_id", ""):
+    """이메일+비밀번호 로그인/회원가입"""
+    supabase = _init_supabase()
+    if not supabase:
+        return  # secrets 없으면 인증 없이 사용 (로컬 개발용)
+
+    if "user_email" in st.session_state:
         return
 
-    # Secrets에서 임시 JSON 파일 생성
-    import tempfile, json, os
-    creds = {
-        "web": {
-            "client_id": google_auth["client_id"],
-            "client_secret": google_auth["client_secret"],
-            "redirect_uris": [google_auth["redirect_uri"]],
-            "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-            "token_uri": "https://oauth2.googleapis.com/token",
-        }
-    }
-    creds_path = os.path.join(tempfile.gettempdir(), "google_creds.json")
-    with open(creds_path, "w") as f:
-        json.dump(creds, f)
+    st.markdown("""
+    <div style="text-align:center; padding: 40px 20px 10px;">
+        <div style="font-size:3rem; margin-bottom:16px;">🏀</div>
+        <div style="font-size:1.8rem; font-weight:800;
+             background: linear-gradient(135deg, #00D4AA, #00A3FF);
+             -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+             margin-bottom:8px;">Shot Form Analyzer</div>
+        <div style="color:#8888A0; margin-bottom:24px;">AI 기반 슛 자세 분석</div>
+    </div>
+    """, unsafe_allow_html=True)
 
-    authenticator = Authenticate(
-        secret_credentials_path=creds_path,
-        cookie_name="shot_form_auth",
-        cookie_key="shot_form_secret_key_123",
-        redirect_uri=google_auth["redirect_uri"],
-    )
-    authenticator.check_authentification()
+    _c1, _c2, _c3 = st.columns([1, 2, 1])
+    with _c2:
+        tab_login, tab_signup = st.tabs(["로그인", "회원가입"])
 
-    if not st.session_state.get("connected", False):
-        st.markdown("""
-        <div style="text-align:center; padding: 60px 20px 20px;">
-            <div style="font-size:3rem; margin-bottom:16px;">🏀</div>
-            <div style="font-size:1.8rem; font-weight:800;
-                 background: linear-gradient(135deg, #00D4AA, #00A3FF);
-                 -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-                 margin-bottom:8px;">Shot Form Analyzer</div>
-            <div style="color:#8888A0; margin-bottom:32px;">AI 기반 슛 자세 분석</div>
-        </div>
-        """, unsafe_allow_html=True)
-        _c1, _c2, _c3 = st.columns([1, 2, 1])
-        with _c2:
-            authenticator.login()
-        st.stop()
+        with tab_login:
+            email = st.text_input("이메일", key="login_email")
+            password = st.text_input("비밀번호", type="password", key="login_pw")
+            if st.button("로그인", use_container_width=True, key="btn_login"):
+                if not email or not password:
+                    st.error("이메일과 비밀번호를 입력하세요.")
+                else:
+                    try:
+                        res = supabase.auth.sign_in_with_password({
+                            "email": email, "password": password
+                        })
+                        st.session_state["user_email"] = res.user.email
+                        st.session_state["user_name"] = res.user.email.split("@")[0]
+                        st.rerun()
+                    except Exception as e:
+                        st.error("로그인 실패: 이메일 또는 비밀번호를 확인하세요.")
 
-    # 로그인 성공 — 이메일 저장
-    st.session_state["user_email"] = st.session_state.get("user_info", {}).get("email", "")
-    st.session_state["user_name"] = st.session_state.get("user_info", {}).get("name", "")
+        with tab_signup:
+            new_email = st.text_input("이메일", key="signup_email")
+            new_pw = st.text_input("비밀번호 (6자 이상)", type="password", key="signup_pw")
+            new_pw2 = st.text_input("비밀번호 확인", type="password", key="signup_pw2")
+            if st.button("회원가입", use_container_width=True, key="btn_signup"):
+                if not new_email or not new_pw:
+                    st.error("이메일과 비밀번호를 입력하세요.")
+                elif new_pw != new_pw2:
+                    st.error("비밀번호가 일치하지 않습니다.")
+                elif len(new_pw) < 6:
+                    st.error("비밀번호는 6자 이상이어야 합니다.")
+                else:
+                    try:
+                        supabase.auth.sign_up({
+                            "email": new_email, "password": new_pw
+                        })
+                        st.success("회원가입 완료! 로그인 탭에서 로그인하세요.")
+                    except Exception as e:
+                        st.error("회원가입 실패: 이미 가입된 이메일일 수 있습니다.")
+
+    st.stop()
 
 def _check_approved():
     """관리자 승인 여부 확인"""
@@ -81,7 +89,6 @@ def _check_approved():
     if not email:
         return
 
-    # 관리자는 항상 승인
     if email in ADMIN_EMAILS:
         st.session_state["is_admin"] = True
         return
@@ -90,22 +97,20 @@ def _check_approved():
     if not supabase:
         return
 
-    # approved_users 테이블에서 이메일 확인
     try:
         res = supabase.table("approved_users").select("email").eq("email", email).execute()
         if res.data and len(res.data) > 0:
-            return  # 승인됨
+            return
     except Exception:
-        return  # 테이블 없으면 승인 없이 통과
+        return
 
-    # 미승인 사용자
     st.markdown("""
     <div style="text-align:center; padding: 80px 20px;">
         <div style="font-size:3rem; margin-bottom:16px;">⏳</div>
         <div style="font-size:1.4rem; font-weight:700; color:#FFB800; margin-bottom:12px;">
             관리자 승인 대기 중</div>
         <div style="color:#8888A0; margin-bottom:8px;">
-            {email} 계정으로 로그인되었습니다.</div>
+            {email} 계정으로 가입되었습니다.</div>
         <div style="color:#8888A0;">
             관리자가 승인하면 사용할 수 있습니다.</div>
     </div>
