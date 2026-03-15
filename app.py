@@ -135,32 +135,56 @@ def _check_approved():
     st.stop()
 
 def _show_menu():
-    """우측 상단 ☰ 드롭다운 메뉴"""
+    """좌측 상단 ☰ 드롭다운 메뉴"""
     role = st.session_state.get("user_role", "")
-    if role not in ("admin", "superadmin"):
-        return "analyzer"
+    is_admin = role in ("admin", "superadmin")
 
-    if st.session_state.get("page", "analyzer") == "admin":
+    if st.session_state.get("page", "analyzer") == "admin" and is_admin:
         return "admin"
 
-    # 우측 상단 ☰
-    _, col_menu = st.columns([8, 1])
+    # 좌측 상단 ☰
+    col_menu, _ = st.columns([1, 8])
     with col_menu:
-        if st.button("☰", key="menu_toggle"):
+        st.markdown("""
+        <style>
+        .menu-btn {
+            background: none !important; border: none !important;
+            color: #fff !important; font-size: 1.6rem !important;
+            cursor: pointer; padding: 4px 12px !important;
+            font-family: 'Pretendard Variable', sans-serif !important;
+        }
+        .menu-dropdown {
+            background: #1a1a2e; border: 1px solid #2A2A3A;
+            border-radius: 12px; padding: 8px 0; margin-top: 4px;
+            font-family: 'Pretendard Variable', sans-serif !important;
+        }
+        .menu-item {
+            display: block; width: 100%; padding: 12px 24px;
+            color: #D0D0E0; font-size: 0.95rem; font-weight: 500;
+            text-align: left; border: none; background: none;
+            cursor: pointer; transition: background 0.2s;
+            font-family: 'Pretendard Variable', sans-serif !important;
+        }
+        .menu-item:hover { background: #2A2A3A; color: #00D4AA; }
+        </style>
+        """, unsafe_allow_html=True)
+
+        if st.button("☰", key="menu_toggle", help="메뉴"):
             st.session_state["menu_open"] = not st.session_state.get("menu_open", False)
 
     if st.session_state.get("menu_open", False):
-        _, col_dropdown = st.columns([8, 1])
-        with col_dropdown:
-            if st.button("분석기", key="go_analyzer", use_container_width=True):
+        col_drop, _ = st.columns([1, 8])
+        with col_drop:
+            if st.button("🏀  분석기", key="go_analyzer", use_container_width=True):
                 st.session_state["menu_open"] = False
                 st.session_state["page"] = "analyzer"
                 st.rerun()
-            if st.button("관리자", key="go_admin", use_container_width=True):
-                st.session_state["menu_open"] = False
-                st.session_state["page"] = "admin"
-                st.rerun()
-            if st.button("로그아웃", key="logout", use_container_width=True):
+            if is_admin:
+                if st.button("⚙️  관리자 모드", key="go_admin", use_container_width=True):
+                    st.session_state["menu_open"] = False
+                    st.session_state["page"] = "admin"
+                    st.rerun()
+            if st.button("🚪  로그아웃", key="logout", use_container_width=True):
                 for key in list(st.session_state.keys()):
                     del st.session_state[key]
                 st.rerun()
