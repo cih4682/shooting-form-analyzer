@@ -77,24 +77,13 @@ iframe[title="streamlit_badge"] {display: none !important;}
 }
 
 /* 종목 탭 스타일 */
-div:has(> div[data-testid="stRadio"]) {
-    display: flex !important;
-    justify-content: center !important;
-}
-div[data-testid="stRadio"] {
-    display: flex !important;
-    justify-content: center !important;
-    width: 100% !important;
-    text-align: center !important;
-}
 div[data-testid="stRadio"] > div {
     gap: 0;
     background: #16161F;
     border-radius: 12px;
     padding: 4px;
-    margin: 0 auto !important;
-    display: inline-flex !important;
-    margin: 0 auto !important;
+    display: flex !important;
+    justify-content: center !important;
 }
 div[data-testid="stRadio"] label {
     padding: 10px 32px !important;
@@ -429,14 +418,12 @@ st.markdown('<div class="hero-subtitle">AI 기반 슛 자세 분석 — 프로�
 # ---------------------------------------------------------------------------
 # 종목 선택
 # ---------------------------------------------------------------------------
-_rc1, _rc2, _rc3 = st.columns([1, 2, 1])
-with _rc2:
-    sport = st.radio(
-        "종목",
-        options=["Basketball", "Netball"],
-        horizontal=True,
-        label_visibility="collapsed",
-    )
+sport = st.radio(
+    "종목",
+    options=["Basketball", "Netball"],
+    horizontal=True,
+    label_visibility="collapsed",
+)
 sport_key = "basketball" if sport == "Basketball" else "netball"
 
 # 가이드 안내
