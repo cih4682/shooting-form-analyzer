@@ -135,7 +135,7 @@ def _check_approved():
     st.stop()
 
 def _show_menu():
-    """상단 바 — 관리자만 표시"""
+    """우측 상단 ☰ 드롭다운 메뉴"""
     role = st.session_state.get("user_role", "")
     if role not in ("admin", "superadmin"):
         return "analyzer"
@@ -143,17 +143,28 @@ def _show_menu():
     if st.session_state.get("page", "analyzer") == "admin":
         return "admin"
 
-    # 분석기 페이지 — 우측 상단에 관리자/로그아웃 버튼
-    _, col_admin, col_logout = st.columns([6, 1, 1])
-    with col_admin:
-        if st.button("⚙️", key="go_admin", help="관리자 모드"):
-            st.session_state["page"] = "admin"
-            st.rerun()
-    with col_logout:
-        if st.button("🚪", key="logout", help="로그아웃"):
-            for key in list(st.session_state.keys()):
-                del st.session_state[key]
-            st.rerun()
+    # 우측 상단 ☰
+    _, col_menu = st.columns([8, 1])
+    with col_menu:
+        if st.button("☰", key="menu_toggle"):
+            st.session_state["menu_open"] = not st.session_state.get("menu_open", False)
+
+    if st.session_state.get("menu_open", False):
+        _, col_dropdown = st.columns([8, 1])
+        with col_dropdown:
+            if st.button("분석기", key="go_analyzer", use_container_width=True):
+                st.session_state["menu_open"] = False
+                st.session_state["page"] = "analyzer"
+                st.rerun()
+            if st.button("관리자", key="go_admin", use_container_width=True):
+                st.session_state["menu_open"] = False
+                st.session_state["page"] = "admin"
+                st.rerun()
+            if st.button("로그아웃", key="logout", use_container_width=True):
+                for key in list(st.session_state.keys()):
+                    del st.session_state[key]
+                st.rerun()
+
     return "analyzer"
 
 def _admin_page():
