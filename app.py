@@ -142,61 +142,52 @@ def _show_menu():
     if st.session_state.get("page", "analyzer") == "admin" and is_admin:
         return "admin"
 
-    # 메뉴 버튼/항목 스타일
-    st.markdown("""
-    <style>
-    /* ☰ 버튼 */
-    div[data-testid="stButton"] button[kind="secondary"]#menu_toggle_btn {
-        color: #fff !important;
-    }
-    /* 메뉴 항목 — 높이 줄이고 화이트 텍스트 */
-    .menu-items button {
-        padding: 6px 0 !important;
-        min-height: 0 !important;
-        font-family: 'Pretendard Variable', sans-serif !important;
-        color: #fff !important;
-        background: transparent !important;
-        border: none !important;
-        font-size: 0.85rem !important;
-        font-weight: 500 !important;
-    }
-    .menu-items button:hover {
-        color: #00D4AA !important;
-    }
-    .menu-items button p {
-        color: #fff !important;
-        font-family: 'Pretendard Variable', sans-serif !important;
-    }
-    .menu-items button:hover p {
-        color: #00D4AA !important;
-    }
-    </style>
-    """, unsafe_allow_html=True)
-
-    # ☰ 버튼
-    col_menu, _ = st.columns([1, 10])
+    # 좌측 상단 ☰
+    col_menu, _ = st.columns([1, 8])
     with col_menu:
-        if st.button("☰", key="menu_toggle"):
+        st.markdown("""
+        <style>
+        .menu-btn {
+            background: none !important; border: none !important;
+            color: #fff !important; font-size: 1.6rem !important;
+            cursor: pointer; padding: 4px 12px !important;
+            font-family: 'Pretendard Variable', sans-serif !important;
+        }
+        .menu-dropdown {
+            background: #1a1a2e; border: 1px solid #2A2A3A;
+            border-radius: 12px; padding: 8px 0; margin-top: 4px;
+            font-family: 'Pretendard Variable', sans-serif !important;
+        }
+        .menu-item {
+            display: block; width: 100%; padding: 12px 24px;
+            color: #D0D0E0; font-size: 0.95rem; font-weight: 500;
+            text-align: left; border: none; background: none;
+            cursor: pointer; transition: background 0.2s;
+            font-family: 'Pretendard Variable', sans-serif !important;
+        }
+        .menu-item:hover { background: #2A2A3A; color: #00D4AA; }
+        </style>
+        """, unsafe_allow_html=True)
+
+        if st.button("☰", key="menu_toggle", help="메뉴"):
             st.session_state["menu_open"] = not st.session_state.get("menu_open", False)
 
     if st.session_state.get("menu_open", False):
-        col_drop, _ = st.columns([1, 10])
+        col_drop, _ = st.columns([1, 8])
         with col_drop:
-            st.markdown('<div class="menu-items">', unsafe_allow_html=True)
-            if st.button("분석기", key="go_analyzer"):
+            if st.button("분석기", key="go_analyzer", use_container_width=True):
                 st.session_state["menu_open"] = False
                 st.session_state["page"] = "analyzer"
                 st.rerun()
             if is_admin:
-                if st.button("관리자 모드", key="go_admin"):
+                if st.button("관리자 모드", key="go_admin", use_container_width=True):
                     st.session_state["menu_open"] = False
                     st.session_state["page"] = "admin"
                     st.rerun()
-            if st.button("로그아웃", key="logout"):
+            if st.button("로그아웃", key="logout", use_container_width=True):
                 for key in list(st.session_state.keys()):
                     del st.session_state[key]
                 st.rerun()
-            st.markdown('</div>', unsafe_allow_html=True)
 
     return "analyzer"
 
