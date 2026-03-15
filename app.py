@@ -77,33 +77,50 @@ def _check_auth():
                         supabase.auth.sign_up({
                             "email": new_email, "password": new_pw
                         })
-                        st.success("회원가입 완료! 로그인 탭에서 로그인하세요.")
+                        # 승인 대기 목록에 추가
+                        try:
+                            supabase.table("pending_users").insert({"email": new_email}).execute()
+                        except Exception:
+                            pass
+                        st.success("회원가입 완료! 관리자 승인 후 사용할 수 있습니다.")
                     except Exception as e:
                         st.error("회원가입 실패: 이미 가입된 이메일일 수 있습니다.")
 
     st.stop()
 
 def _check_approved():
-    """관리자 승인 여부 확인"""
+    """관리자 승인 여부 확인 + 역할 설정"""
     email = st.session_state.get("user_email", "")
     if not email:
-        return
-
-    if email in ADMIN_EMAILS:
-        st.session_state["is_admin"] = True
         return
 
     supabase = _init_supabase()
     if not supabase:
         return
 
+    # approved_users에서 역할 확인
     try:
-        res = supabase.table("approved_users").select("email").eq("email", email).execute()
+        res = supabase.table("approved_users").select("email, role").eq("email", email).execute()
         if res.data and len(res.data) > 0:
-            return
+            role = res.data[0].get("role", "user")
+            st.session_state["user_role"] = role
+            return  # 승인됨
     except Exception:
-        return
+        return  # 테이블 없으면 승인 없이 통과
 
+    # ADMIN_EMAILS에 있으면 자동 승인 + superadmin
+    if email in ADMIN_EMAILS:
+        try:
+            supabase.table("approved_users").upsert({
+                "email": email, "role": "superadmin"
+            }).execute()
+            st.session_state["user_role"] = "superadmin"
+            return
+        except Exception:
+            st.session_state["user_role"] = "superadmin"
+            return
+
+    # 미승인 사용자
     st.markdown("""
     <div style="text-align:center; padding: 80px 20px;">
         <div style="font-size:3rem; margin-bottom:16px;">⏳</div>
@@ -116,6 +133,97 @@ def _check_approved():
     </div>
     """.replace("{email}", email), unsafe_allow_html=True)
     st.stop()
+
+def _admin_panel():
+    """사이드바 관리자 패널"""
+    role = st.session_state.get("user_role", "")
+    if role not in ("admin", "superadmin"):
+        return
+
+    supabase = _init_supabase()
+    if not supabase:
+        return
+
+    with st.sidebar:
+        st.markdown("---")
+        st.markdown("### ⚙️ 관리자 모드")
+        st.caption(f"로그인: {st.session_state.get('user_email', '')}")
+        st.caption(f"권한: {'최고관리자' if role == 'superadmin' else '관리자'}")
+
+        if st.button("🔄 목록 새로고침", use_container_width=True):
+            st.rerun()
+
+        # --- Supabase auth에서 전체 유저 목록 가져오기 ---
+        # approved_users 테이블에서 승인된 사용자
+        try:
+            approved_res = supabase.table("approved_users").select("email, role").execute()
+            approved_map = {r["email"]: r["role"] for r in (approved_res.data or [])}
+        except Exception:
+            approved_map = {}
+
+        # --- 대기 중 사용자 (Supabase Auth에 있지만 approved_users에 없는 사용자) ---
+        # Supabase free plan에서는 auth.users를 직접 조회 못하므로,
+        # 회원가입 시 pending_users 테이블에 기록하는 방식 사용
+        try:
+            pending_res = supabase.table("pending_users").select("email, created_at").execute()
+            pending_users = [r for r in (pending_res.data or []) if r["email"] not in approved_map]
+        except Exception:
+            pending_users = []
+
+        # --- 대기 중 사용자 ---
+        st.markdown("#### 🕐 승인 대기")
+        if pending_users:
+            for pu in pending_users:
+                col1, col2, col3 = st.columns([3, 1, 1])
+                col1.caption(pu["email"])
+                if col2.button("✅", key=f"approve_{pu['email']}", help="승인"):
+                    try:
+                        supabase.table("approved_users").insert({"email": pu["email"], "role": "user"}).execute()
+                        supabase.table("pending_users").delete().eq("email", pu["email"]).execute()
+                        st.rerun()
+                    except Exception:
+                        st.error("승인 실패")
+                if col3.button("🗑", key=f"del_pending_{pu['email']}", help="삭제"):
+                    try:
+                        supabase.table("pending_users").delete().eq("email", pu["email"]).execute()
+                        st.rerun()
+                    except Exception:
+                        st.error("삭제 실패")
+        else:
+            st.caption("대기 중인 사용자가 없습니다.")
+
+        # --- 승인된 사용자 ---
+        st.markdown("#### ✅ 승인된 사용자")
+        for email, r in approved_map.items():
+            if r == "superadmin":
+                continue  # 최고관리자는 목록에서 제외
+            col1, col2, col3 = st.columns([3, 1, 1])
+            label = f"👑 {email}" if r == "admin" else email
+            col1.caption(label)
+
+            # 최고관리자만 관리자 지정/해제 가능
+            if role == "superadmin":
+                if r == "admin":
+                    if col2.button("👤", key=f"demote_{email}", help="관리자 해제"):
+                        try:
+                            supabase.table("approved_users").update({"role": "user"}).eq("email", email).execute()
+                            st.rerun()
+                        except Exception:
+                            st.error("변경 실패")
+                else:
+                    if col2.button("👑", key=f"promote_{email}", help="관리자 지정"):
+                        try:
+                            supabase.table("approved_users").update({"role": "admin"}).eq("email", email).execute()
+                            st.rerun()
+                        except Exception:
+                            st.error("변경 실패")
+
+            if col3.button("🗑", key=f"del_{email}", help="삭제"):
+                try:
+                    supabase.table("approved_users").delete().eq("email", email).execute()
+                    st.rerun()
+                except Exception:
+                    st.error("삭제 실패")
 
 # ---------------------------------------------------------------------------
 # 페이지 설정
@@ -131,6 +239,7 @@ st.set_page_config(
 # ---------------------------------------------------------------------------
 _check_auth()
 _check_approved()
+_admin_panel()
 
 # ---------------------------------------------------------------------------
 # 커스텀 CSS
