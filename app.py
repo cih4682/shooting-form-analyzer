@@ -179,30 +179,31 @@ def _show_menu():
     return "analyzer"
 
 def _admin_page():
-    """관리자 페이지 — 전체 화면, 모바일 최적화"""
+    """관리자 페이지 — 전체 화면"""
     role = st.session_state.get("user_role", "")
-    email = st.session_state.get("user_email", "")
     supabase = _init_supabase()
     if not supabase:
         return
 
-    role_label = "최고관리자" if role == "superadmin" else "관리자"
-
-    # 상단 헤더 + 돌아가기
-    st.markdown(f"""
-    <div style="text-align:center; margin-bottom:16px; font-family:'Pretendard Variable',sans-serif;">
-        <div style="font-size:1.4rem; font-weight:800; color:#00D4AA;
-             margin-bottom:4px;">관리자 모드</div>
-        <div style="color:#8888A0; font-size:0.8rem;">{email} ({role_label})</div>
+    st.markdown("""
+    <div style="text-align:center; margin-bottom:32px;">
+        <div style="font-size:1.6rem; font-weight:800;
+             background: linear-gradient(135deg, #00D4AA, #00A3FF);
+             -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
+             ⚙️ 관리자 모드</div>
+        <div style="color:#8888A0; font-size:0.9rem; margin-top:4px;">
+            {email} ({role_label})</div>
     </div>
-    """, unsafe_allow_html=True)
+    """.replace("{email}", st.session_state.get("user_email", ""))
+       .replace("{role_label}", "최고관리자" if role == "superadmin" else "관리자"),
+    unsafe_allow_html=True)
 
+    # 돌아가기 버튼
     if st.button("← 돌아가기", key="back_to_analyzer"):
         st.session_state["page"] = "analyzer"
         st.rerun()
 
-    st.markdown('<div style="height:1px;background:#2A2A3A;margin:12px 0;"></div>',
-                unsafe_allow_html=True)
+    st.markdown("---")
 
     # 데이터 로드
     try:
@@ -219,107 +220,77 @@ def _admin_page():
     except Exception:
         pending_users = []
 
-    # 탭 — 아이콘 없이 심플하게
-    tab_pending, tab_approved, tab_admin = st.tabs(["승인 대기", "승인된 사용자", "관리자"])
+    # 3개 섹션
+    tab_pending, tab_approved, tab_admin = st.tabs(["🕐 승인 대기", "✅ 승인된 사용자", "👑 관리자"])
 
     # --- 승인 대기 ---
     with tab_pending:
         if pending_users:
             for pu in pending_users:
-                c1, c2, c3 = st.columns([4, 3, 3])
-                c1.markdown(f"<div style='font-size:0.85rem;color:#D0D0E0;padding:6px 0;'>{pu['email']}</div>", unsafe_allow_html=True)
-                c2.button("승인", key=f"approve_{pu['email']}", type="primary",
-                          use_container_width=True,
-                          on_click=lambda e=pu["email"]: _approve_user(supabase, e))
-                c3.button("삭제", key=f"del_p_{pu['email']}",
-                          use_container_width=True,
-                          on_click=lambda e=pu["email"]: _delete_pending(supabase, e))
+                col1, col2, col3 = st.columns([4, 1, 1])
+                col1.markdown(f"**{pu['email']}**")
+                if col2.button("승인", key=f"approve_{pu['email']}", type="primary"):
+                    try:
+                        supabase.table("approved_users").insert({"email": pu["email"], "role": "user"}).execute()
+                        supabase.table("pending_users").delete().eq("email", pu["email"]).execute()
+                        st.rerun()
+                    except Exception:
+                        st.error("승인 실패")
+                if col3.button("삭제", key=f"del_p_{pu['email']}"):
+                    try:
+                        supabase.table("pending_users").delete().eq("email", pu["email"]).execute()
+                        st.rerun()
+                    except Exception:
+                        st.error("삭제 실패")
         else:
-            st.markdown('<div style="color:#8888A0;font-size:0.85rem;padding:16px 0;'
-                        'font-family:\'Pretendard Variable\',sans-serif;">대기 중인 사용자가 없습니다.</div>',
-                        unsafe_allow_html=True)
+            st.info("대기 중인 사용자가 없습니다.")
 
     # --- 승인된 사용자 ---
     with tab_approved:
         users = [r for r in approved_list if r.get("role") == "user"]
         if users:
             for u in users:
+                col1, col2, col3 = st.columns([4, 1, 1])
+                col1.markdown(f"**{u['email']}**")
                 if role == "superadmin":
-                    c1, c2, c3 = st.columns([4, 3, 3])
-                    c1.markdown(f"<div style='font-size:0.85rem;color:#D0D0E0;padding:6px 0;'>{u['email']}</div>", unsafe_allow_html=True)
-                    c2.button("관리자", key=f"promote_{u['email']}",
-                              use_container_width=True,
-                              on_click=lambda e=u["email"]: _promote_user(supabase, e))
-                    c3.button("삭제", key=f"del_u_{u['email']}",
-                              use_container_width=True,
-                              on_click=lambda e=u["email"]: _delete_user(supabase, e))
-                else:
-                    c1, c2 = st.columns([7, 2])
-                    c1.markdown(f"<div style='font-size:0.85rem;color:#D0D0E0;padding:6px 0;'>{u['email']}</div>", unsafe_allow_html=True)
-                    c2.button("삭제", key=f"del_u_{u['email']}",
-                              use_container_width=True,
-                              on_click=lambda e=u["email"]: _delete_user(supabase, e))
+                    if col2.button("관리자 지정", key=f"promote_{u['email']}"):
+                        try:
+                            supabase.table("approved_users").update({"role": "admin"}).eq("email", u["email"]).execute()
+                            st.rerun()
+                        except Exception:
+                            st.error("변경 실패")
+                if col3.button("삭제", key=f"del_u_{u['email']}"):
+                    try:
+                        supabase.table("approved_users").delete().eq("email", u["email"]).execute()
+                        st.rerun()
+                    except Exception:
+                        st.error("삭제 실패")
         else:
-            st.markdown('<div style="color:#8888A0;font-size:0.85rem;padding:16px 0;'
-                        'font-family:\'Pretendard Variable\',sans-serif;">승인된 일반 사용자가 없습니다.</div>',
-                        unsafe_allow_html=True)
+            st.info("승인된 일반 사용자가 없습니다.")
 
-    # --- 관리자 목록 ---
+    # --- 관리자 목록 (최고관리자만) ---
     with tab_admin:
         if role == "superadmin":
             admins = [r for r in approved_list if r.get("role") == "admin"]
             if admins:
                 for a in admins:
-                    c1, c2 = st.columns([7, 2])
-                    c1.markdown(f"<div style='font-size:0.85rem;color:#D0D0E0;padding:6px 0;'>{a['email']}</div>", unsafe_allow_html=True)
-                    c2.button("해제", key=f"demote_{a['email']}",
-                              use_container_width=True,
-                              on_click=lambda e=a["email"]: _demote_user(supabase, e))
+                    col1, col2 = st.columns([4, 1])
+                    col1.markdown(f"**{a['email']}**")
+                    if col2.button("관리자 해제", key=f"demote_{a['email']}"):
+                        try:
+                            supabase.table("approved_users").update({"role": "user"}).eq("email", a["email"]).execute()
+                            st.rerun()
+                        except Exception:
+                            st.error("변경 실패")
             else:
-                st.markdown('<div style="color:#8888A0;font-size:0.85rem;padding:16px 0;'
-                            'font-family:\'Pretendard Variable\',sans-serif;">지정된 관리자가 없습니다.</div>',
-                            unsafe_allow_html=True)
-            st.markdown(f'<div style="color:#555;font-size:0.75rem;padding:12px 0;'
-                        f'font-family:\'Pretendard Variable\',sans-serif;">최고관리자: {email}</div>',
-                        unsafe_allow_html=True)
+                st.info("지정된 관리자가 없습니다.")
+
+            st.markdown("---")
+            st.caption("최고관리자: " + st.session_state.get("user_email", ""))
         else:
-            st.markdown('<div style="color:#8888A0;font-size:0.85rem;padding:16px 0;'
-                        'font-family:\'Pretendard Variable\',sans-serif;">최고관리자만 관리자를 관리할 수 있습니다.</div>',
-                        unsafe_allow_html=True)
+            st.warning("최고관리자만 관리자를 관리할 수 있습니다.")
 
     st.stop()
-
-
-def _approve_user(supabase, email):
-    try:
-        supabase.table("approved_users").insert({"email": email, "role": "user"}).execute()
-        supabase.table("pending_users").delete().eq("email", email).execute()
-    except Exception:
-        pass
-
-def _delete_pending(supabase, email):
-    try:
-        supabase.table("pending_users").delete().eq("email", email).execute()
-    except Exception:
-        pass
-
-def _promote_user(supabase, email):
-    try:
-        supabase.table("approved_users").update({"role": "admin"}).eq("email", email).execute()
-    except Exception:
-        pass
-
-def _delete_user(supabase, email):
-    try:
-        supabase.table("approved_users").delete().eq("email", email).execute()
-    except Exception:
-        pass
-
-def _demote_user(supabase, email):
-    try:
-        supabase.table("approved_users").update({"role": "user"}).eq("email", email).execute()
-    except Exception:
-        pass
 
 # ---------------------------------------------------------------------------
 # 페이지 설정
@@ -645,10 +616,6 @@ div[data-testid="stAlert"][data-baseweb*="info"] { display: none; }
     .overall-circle { width: 110px; height: 110px; }
     .overall-number { font-size: 2.2rem; }
     .feedback-card { padding: 12px 14px; font-size: 0.88rem; }
-    div[data-testid="stRadio"] label {
-        padding: 6px 12px !important;
-        font-size: 0.75rem !important;
-    }
 
     /* 업로드 영역 모바일 — 구름 좌측 + 3줄 */
     div[data-testid="stFileUploader"] section > div:first-child {
