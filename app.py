@@ -80,23 +80,18 @@ def _check_auth():
     login_url = _get_login_url()
     if login_url:
         st.markdown("""
-        <div style="text-align:center; padding: 80px 20px;">
+        <div style="text-align:center; padding: 60px 20px 20px;">
             <div style="font-size:3rem; margin-bottom:16px;">🏀</div>
             <div style="font-size:1.8rem; font-weight:800;
                  background: linear-gradient(135deg, #00D4AA, #00A3FF);
                  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
                  margin-bottom:8px;">Shot Form Analyzer</div>
             <div style="color:#8888A0; margin-bottom:32px;">AI 기반 슛 자세 분석</div>
-            <button onclick="window.top.location.href='{url}'" style="
-                display:inline-block; padding:14px 40px;
-                background: linear-gradient(135deg, #00D4AA, #00A3FF);
-                color:#000; font-weight:700; font-size:1rem;
-                border-radius:12px; border:none; cursor:pointer;
-                transition: opacity 0.2s;">
-                Google 계정으로 로그인
-            </button>
         </div>
-        """.replace("{url}", login_url), unsafe_allow_html=True)
+        """, unsafe_allow_html=True)
+        _c1, _c2, _c3 = st.columns([1, 2, 1])
+        with _c2:
+            st.link_button("🔐 Google 계정으로 로그인", login_url, use_container_width=True)
     st.stop()
 
 def _check_approved():
