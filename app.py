@@ -26,11 +26,7 @@ def _init_supabase():
 
 def _get_login_url():
     """Google OAuth 로그인 URL 생성 — Supabase 직접 URL 사용"""
-    redirect = st.secrets.get("supabase", {}).get("redirect_url", "")
-    url = f"{SUPABASE_URL}/auth/v1/authorize?provider=google"
-    if redirect:
-        url += f"&redirect_to={redirect}"
-    return url
+    return f"{SUPABASE_URL}/auth/v1/authorize?provider=google"
 
 def _check_auth():
     """인증 상태 확인 — 로그인 안 됐으면 로그인 버튼 표시 후 stop"""
