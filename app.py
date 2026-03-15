@@ -92,6 +92,7 @@ div[data-testid="stRadio"] > div {
     background: #16161F;
     border-radius: 12px;
     padding: 4px;
+    margin: 0 auto !important;
     display: inline-flex !important;
     margin: 0 auto !important;
 }
