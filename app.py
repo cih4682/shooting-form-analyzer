@@ -550,25 +550,27 @@ div[data-testid="stFileUploader"]:hover {
     border-color: #00D4AA !important;
 }
 
-/* 분석 버튼 */
-div[data-testid="stButton"] > button {
+/* 분석 버튼 — ANALYZE 전용 (use_container_width) */
+div[data-testid="stButton"] > button[kind="primary"],
+div[data-testid="stButton"] > button[data-testid="stBaseButton-secondary"] {
     background: linear-gradient(135deg, #00D4AA, #00A3FF) !important;
-    color: #000 !important;
+    color: #fff !important;
     font-weight: 700 !important;
     font-size: 1rem !important;
     border: none !important;
     border-radius: 12px !important;
     padding: 14px 0 !important;
-    letter-spacing: 0.5px;
+    letter-spacing: 1px;
     transition: opacity 0.2s, transform 0.2s !important;
 }
 div[data-testid="stButton"] > button:hover {
-    opacity: 0.9;
+    opacity: 0.85;
     transform: translateY(-1px);
 }
 div[data-testid="stButton"] > button:disabled {
     background: #2A2A3A !important;
     color: #555 !important;
+    transform: none !important;
 }
 
 /* 섹션 구분선 */
