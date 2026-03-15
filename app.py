@@ -32,13 +32,26 @@ def _check_auth():
     if not google_auth.get("client_id", ""):
         return
 
+    # Secrets에서 임시 JSON 파일 생성
+    import tempfile, json, os
+    creds = {
+        "web": {
+            "client_id": google_auth["client_id"],
+            "client_secret": google_auth["client_secret"],
+            "redirect_uris": [google_auth["redirect_uri"]],
+            "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+            "token_uri": "https://oauth2.googleapis.com/token",
+        }
+    }
+    creds_path = os.path.join(tempfile.gettempdir(), "google_creds.json")
+    with open(creds_path, "w") as f:
+        json.dump(creds, f)
+
     authenticator = Authenticate(
-        secret_credentials_path=None,
+        secret_credentials_path=creds_path,
         cookie_name="shot_form_auth",
         cookie_key="shot_form_secret_key_123",
-        redirect_uri=google_auth.get("redirect_uri", ""),
-        client_id=google_auth.get("client_id", ""),
-        client_secret=google_auth.get("client_secret", ""),
+        redirect_uri=google_auth["redirect_uri"],
     )
     authenticator.check_authentification()
 
