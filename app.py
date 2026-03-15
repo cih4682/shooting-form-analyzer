@@ -79,12 +79,25 @@ div[data-testid="stRadio"] label:has(input:checked) {
     color: #000 !important;
 }
 
+/* 스코어 그리드 */
+.score-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-bottom: 12px;
+}
+@media (max-width: 768px) {
+    .score-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
 /* 스코어 카드 */
 .score-card {
     background: linear-gradient(145deg, #16161F, #1C1C28);
     border: 1px solid #2A2A3A;
     border-radius: 16px;
-    padding: 24px 20px;
+    padding: 20px 12px;
     text-align: center;
     transition: transform 0.2s, box-shadow 0.2s;
 }
@@ -93,15 +106,15 @@ div[data-testid="stRadio"] label:has(input:checked) {
     box-shadow: 0 8px 24px rgba(0, 212, 170, 0.1);
 }
 .score-label {
-    font-size: 0.8rem;
+    font-size: 0.7rem;
     color: #8888A0;
     text-transform: uppercase;
-    letter-spacing: 1.5px;
+    letter-spacing: 1.2px;
     font-weight: 600;
-    margin-bottom: 8px;
+    margin-bottom: 6px;
 }
 .score-value {
-    font-size: 2.8rem;
+    font-size: 2.2rem;
     font-weight: 800;
     line-height: 1;
     margin-bottom: 4px;
@@ -286,19 +299,23 @@ def get_score_class(score):
     if score >= 50: return "warning"
     return "danger"
 
-def render_score_card(label, score):
+def _score_card_html(label, score):
     cls = get_score_class(score)
     color_map = {"perfect": "#00D4AA", "good": "#00A3FF", "warning": "#FFB800", "danger": "#FF4757"}
     color = color_map[cls]
-    st.markdown(f"""
+    return f"""
     <div class="score-card">
         <div class="score-label">{label}</div>
         <div class="score-value score-{cls}">{score}</div>
         <div class="progress-bar">
             <div class="progress-fill" style="width:{score}%; background:{color};"></div>
         </div>
-    </div>
-    """, unsafe_allow_html=True)
+    </div>"""
+
+def render_score_grid(items):
+    """items: list of (label, score) tuples"""
+    cards = "".join(_score_card_html(label, score) for label, score in items)
+    st.markdown(f'<div class="score-grid">{cards}</div>', unsafe_allow_html=True)
 
 def render_feedback(title, text, score, comparison_img=None):
     cls = get_score_class(score)
@@ -481,26 +498,27 @@ if analyze_btn and can_analyze:
         st.markdown('<div class="section-divider"></div>', unsafe_allow_html=True)
 
         # =================================================================
-        # 점수 카드
+        # 점수 카드 (CSS 그리드 — 모바일 2열, 데스크톱 3열)
         # =================================================================
+        score_items = []
         if side_result:
-            cols = st.columns(3)
-            with cols[0]: render_score_card("ELBOW", fb["elbow_score"])
-            with cols[1]: render_score_card("KNEE", fb["knee_score"])
-            with cols[2]: render_score_card("POSTURE", fb["lean_score"])
-
+            score_items += [
+                ("ELBOW", fb["elbow_score"]),
+                ("KNEE", fb["knee_score"]),
+                ("POSTURE", fb["lean_score"]),
+            ]
             if sport_key == "netball":
-                st.markdown("<br>", unsafe_allow_html=True)
-                extra_cols = st.columns(2)
-                with extra_cols[0]: render_score_card("SHOT HEIGHT", fb["shot_height_score"])
-                with extra_cols[1]: render_score_card("DIRECTION", fb["shot_direction_score"])
-
+                score_items += [
+                    ("SHOT HEIGHT", fb["shot_height_score"]),
+                    ("DIRECTION", fb["shot_direction_score"]),
+                ]
         if front_result:
-            st.markdown("<br>", unsafe_allow_html=True)
-            front_cols = st.columns(3)
-            with front_cols[0]: render_score_card("ALIGNMENT", fb["alignment_score"])
-            with front_cols[1]: render_score_card("SHOULDERS", fb["shoulder_level_score"])
-            with front_cols[2]: render_score_card("FINGER", fb["finger_direction_score"])
+            score_items += [
+                ("ALIGNMENT", fb["alignment_score"]),
+                ("SHOULDERS", fb["shoulder_level_score"]),
+                ("FINGER", fb["finger_direction_score"]),
+            ]
+        render_score_grid(score_items)
 
         st.markdown('<div class="section-divider"></div>', unsafe_allow_html=True)
 
