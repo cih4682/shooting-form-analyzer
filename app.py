@@ -135,42 +135,36 @@ def _check_approved():
     st.stop()
 
 def _show_menu():
-    """좌측 상단 ☰ 드롭다운 메뉴"""
+    """좌측 상단 ☰ → 옆에 메뉴 항목 표시"""
     role = st.session_state.get("user_role", "")
     is_admin = role in ("admin", "superadmin")
 
     if st.session_state.get("page", "analyzer") == "admin" and is_admin:
         return "admin"
 
-    # 좌측 상단 ☰
-    col_menu, _ = st.columns([1, 8])
-    with col_menu:
-        st.markdown("", unsafe_allow_html=True)
-
-        if st.button("☰", key="menu_toggle", help="메뉴"):
-            st.session_state["menu_open"] = not st.session_state.get("menu_open", False)
+    # ☰ 버튼
+    if st.button("☰", key="menu_toggle"):
+        st.session_state["menu_open"] = not st.session_state.get("menu_open", False)
 
     if st.session_state.get("menu_open", False):
-        col_drop, _ = st.columns([1, 8])
-        with col_drop:
-            items = ["분석기"]
-            if is_admin:
-                items.append("관리자 모드")
-            items.append("로그아웃")
-            choice = st.radio(
-                "nav", items,
-                label_visibility="collapsed",
-                key="nav_radio",
-                horizontal=True,
-            )
-            if choice == "관리자 모드":
-                st.session_state["menu_open"] = False
-                st.session_state["page"] = "admin"
-                st.rerun()
-            elif choice == "로그아웃":
-                for key in list(st.session_state.keys()):
-                    del st.session_state[key]
-                st.rerun()
+        items = ["분석기"]
+        if is_admin:
+            items.append("관리자 모드")
+        items.append("로그아웃")
+        choice = st.radio(
+            "nav", items,
+            label_visibility="collapsed",
+            key="nav_radio",
+            horizontal=True,
+        )
+        if choice == "관리자 모드":
+            st.session_state["menu_open"] = False
+            st.session_state["page"] = "admin"
+            st.rerun()
+        elif choice == "로그아웃":
+            for key in list(st.session_state.keys()):
+                del st.session_state[key]
+            st.rerun()
 
     return "analyzer"
 
@@ -373,16 +367,18 @@ div[data-testid="stRadio"] > div {
     margin: 0 auto !important;
 }
 div[data-testid="stRadio"] label {
-    padding: 10px 32px !important;
+    padding: 8px 24px !important;
     border-radius: 10px !important;
     font-weight: 600 !important;
-    font-size: 0.95rem !important;
+    font-size: 0.9rem !important;
     transition: all 0.2s;
+    white-space: nowrap !important;
+    color: #fff !important;
 }
 div[data-testid="stRadio"] label[data-checked="true"],
 div[data-testid="stRadio"] label:has(input:checked) {
     background: linear-gradient(135deg, #00D4AA, #00A3FF) !important;
-    color: #000 !important;
+    color: #fff !important;
 }
 
 /* 스코어 그리드: PC 한줄, 모바일 4열(4+4 or 4+3) */
