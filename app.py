@@ -3,6 +3,7 @@ app.py — Shot Form Analyzer (Streamlit)
 """
 
 import streamlit as st
+from supabase import create_client
 from analyzer import (
     analyze_side_video, analyze_front_video,
     draw_skeleton, draw_front_skeleton,
@@ -12,6 +13,134 @@ from analyzer import (
 from feedback import generate_feedback, CRITERIA
 
 # ---------------------------------------------------------------------------
+# Supabase 인증
+# ---------------------------------------------------------------------------
+SUPABASE_URL = st.secrets.get("supabase", {}).get("url", "")
+SUPABASE_KEY = st.secrets.get("supabase", {}).get("key", "")
+ADMIN_EMAILS = st.secrets.get("supabase", {}).get("admin_emails", [])
+
+def _init_supabase():
+    if SUPABASE_URL and SUPABASE_KEY:
+        return create_client(SUPABASE_URL, SUPABASE_KEY)
+    return None
+
+def _get_login_url(supabase_client):
+    """Google OAuth 로그인 URL 생성"""
+    res = supabase_client.auth.sign_in_with_oauth({
+        "provider": "google",
+        "options": {"redirect_to": st.secrets.get("supabase", {}).get("redirect_url", "")}
+    })
+    return res.url if res else None
+
+def _check_auth():
+    """인증 상태 확인 — 로그인 안 됐으면 로그인 버튼 표시 후 stop"""
+    supabase = _init_supabase()
+    if not supabase:
+        return  # secrets 없으면 인증 없이 사용 (로컬 개발용)
+
+    # URL에서 access_token 파라미터 확인 (OAuth callback)
+    params = st.query_params
+    access_token = params.get("access_token", None)
+    refresh_token = params.get("refresh_token", None)
+
+    # 세션에 유저 정보가 있으면 통과
+    if "user_email" in st.session_state:
+        return
+
+    # access_token이 URL에 있으면 세션 설정
+    if access_token:
+        try:
+            res = supabase.auth.set_session(access_token, refresh_token or "")
+            user = res.user
+            if user:
+                st.session_state["user_email"] = user.email
+                st.session_state["user_name"] = user.user_metadata.get("full_name", user.email)
+                st.query_params.clear()
+                st.rerun()
+        except Exception:
+            pass
+
+    # fragment에서 토큰 추출 (Supabase OAuth는 hash fragment로 반환)
+    # Streamlit은 fragment를 직접 못 읽으므로 JS로 파싱
+    st.markdown("""
+    <script>
+    const hash = window.location.hash.substring(1);
+    if (hash) {
+        const params = new URLSearchParams(hash);
+        const accessToken = params.get('access_token');
+        const refreshToken = params.get('refresh_token');
+        if (accessToken) {
+            const url = new URL(window.location);
+            url.searchParams.set('access_token', accessToken);
+            url.searchParams.set('refresh_token', refreshToken || '');
+            url.hash = '';
+            window.location.replace(url.toString());
+        }
+    }
+    </script>
+    """, unsafe_allow_html=True)
+
+    # 로그인 버튼 표시
+    login_url = _get_login_url(supabase)
+    if login_url:
+        st.markdown("""
+        <div style="text-align:center; padding: 80px 20px;">
+            <div style="font-size:3rem; margin-bottom:16px;">🏀</div>
+            <div style="font-size:1.8rem; font-weight:800;
+                 background: linear-gradient(135deg, #00D4AA, #00A3FF);
+                 -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+                 margin-bottom:8px;">Shot Form Analyzer</div>
+            <div style="color:#8888A0; margin-bottom:32px;">AI 기반 슛 자세 분석</div>
+            <a href="{url}" target="_self" style="
+                display:inline-block; padding:14px 40px;
+                background: linear-gradient(135deg, #00D4AA, #00A3FF);
+                color:#000; font-weight:700; font-size:1rem;
+                border-radius:12px; text-decoration:none;
+                transition: opacity 0.2s;">
+                Google 계정으로 로그인
+            </a>
+        </div>
+        """.replace("{url}", login_url), unsafe_allow_html=True)
+    st.stop()
+
+def _check_approved():
+    """관리자 승인 여부 확인"""
+    email = st.session_state.get("user_email", "")
+    if not email:
+        return
+
+    # 관리자는 항상 승인
+    if email in ADMIN_EMAILS:
+        st.session_state["is_admin"] = True
+        return
+
+    supabase = _init_supabase()
+    if not supabase:
+        return
+
+    # approved_users 테이블에서 이메일 확인
+    try:
+        res = supabase.table("approved_users").select("email").eq("email", email).execute()
+        if res.data and len(res.data) > 0:
+            return  # 승인됨
+    except Exception:
+        return  # 테이블 없으면 승인 없이 통과
+
+    # 미승인 사용자
+    st.markdown("""
+    <div style="text-align:center; padding: 80px 20px;">
+        <div style="font-size:3rem; margin-bottom:16px;">⏳</div>
+        <div style="font-size:1.4rem; font-weight:700; color:#FFB800; margin-bottom:12px;">
+            관리자 승인 대기 중</div>
+        <div style="color:#8888A0; margin-bottom:8px;">
+            {email} 계정으로 로그인되었습니다.</div>
+        <div style="color:#8888A0;">
+            관리자가 승인하면 사용할 수 있습니다.</div>
+    </div>
+    """.replace("{email}", email), unsafe_allow_html=True)
+    st.stop()
+
+# ---------------------------------------------------------------------------
 # 페이지 설정
 # ---------------------------------------------------------------------------
 st.set_page_config(
@@ -19,6 +148,12 @@ st.set_page_config(
     page_icon="🏀",
     layout="wide",
 )
+
+# ---------------------------------------------------------------------------
+# 인증 체크 (Supabase secrets가 있을 때만 동작)
+# ---------------------------------------------------------------------------
+_check_auth()
+_check_approved()
 
 # ---------------------------------------------------------------------------
 # 커스텀 CSS
