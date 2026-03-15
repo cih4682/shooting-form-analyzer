@@ -260,13 +260,13 @@ def analyze_side_video(video_bytes: bytes):
     result["shot_height_above_head"] = shot_height_above and shot_height_position
     result["shot_height_in_front"] = shot_height_above and not shot_height_position
 
-    if release_idx > 0:
-        prev_ld = valid[release_idx - 1][1]
-        dx = release_ld["wrist"][0] - prev_ld["wrist"][0]
-        dy = prev_ld["wrist"][1] - release_ld["wrist"][1]
-        if abs(dx) + abs(dy) > 1e-3:
-            direction_angle = math.degrees(math.atan2(dy, abs(dx)))
-            result["shot_direction_angle"] = round(max(0, min(90, direction_angle)), 1)
+    # 슛 방향: 어깨→손목 벡터가 수평선과 이루는 각도
+    # 90° = 수직, 0° = 수평(앞으로)
+    dx = release_ld["wrist"][0] - release_ld["shoulder"][0]
+    dy = release_ld["shoulder"][1] - release_ld["wrist"][1]  # y 반전 (위가 +)
+    if abs(dx) + abs(dy) > 1e-3:
+        direction_angle = math.degrees(math.atan2(dy, abs(dx)))
+        result["shot_direction_angle"] = round(max(0, min(90, direction_angle)), 1)
 
     return result
 
@@ -466,59 +466,55 @@ def draw_shot_height_comparison(frame, landmarks, is_above_head):
 
 def draw_shot_direction_comparison(frame, landmarks, direction_angle):
     img = frame.copy()
+    shoulder = landmarks["shoulder"]
+    sh_pt = tuple(map(int, shoulder))
     wrist = landmarks["wrist"]
     wr_pt = tuple(map(int, wrist))
     h, w = img.shape[:2]
-    line_len = int(min(w, h) * 0.18)
+    line_len = int(min(w, h) * 0.2)
 
-    # --- 90° 수직선 (회색 점선 — 기준선) ---
-    vert_end = (wr_pt[0], wr_pt[1] - line_len)
-    cv2.line(img, wr_pt, vert_end, (100, 100, 100), 1, cv2.LINE_AA)
+    # --- 90° 수직선 (회색 — 기준) ---
+    vert_end = (sh_pt[0], sh_pt[1] - line_len)
+    cv2.line(img, sh_pt, vert_end, (100, 100, 100), 1, cv2.LINE_AA)
     cv2.putText(img, "90", (vert_end[0] - 15, vert_end[1] - 10),
                 cv2.FONT_HERSHEY_SIMPLEX, 0.5, (100, 100, 100), 1)
 
-    # --- 45° 기준선 (회색 점선 — 너무 앞) ---
+    # --- 45° 기준선 (회색 — 너무 앞) ---
     rad_45 = math.radians(45)
-    end_45 = (int(wr_pt[0] + line_len * math.cos(rad_45)), int(wr_pt[1] - line_len * math.sin(rad_45)))
-    cv2.line(img, wr_pt, end_45, (100, 100, 100), 1, cv2.LINE_AA)
+    end_45 = (int(sh_pt[0] + line_len * math.cos(rad_45)), int(sh_pt[1] - line_len * math.sin(rad_45)))
+    cv2.line(img, sh_pt, end_45, (100, 100, 100), 1, cv2.LINE_AA)
     cv2.putText(img, "45", (end_45[0] + 5, end_45[1] - 5),
                 cv2.FONT_HERSHEY_SIMPLEX, 0.5, (100, 100, 100), 1)
 
-    # --- 이상적 범위 (초록 영역: 65°~80°) ---
-    rad_65 = math.radians(65)
-    rad_80 = math.radians(80)
-    end_65 = (int(wr_pt[0] + line_len * math.cos(rad_65)), int(wr_pt[1] - line_len * math.sin(rad_65)))
-    end_80 = (int(wr_pt[0] + line_len * math.cos(rad_80)), int(wr_pt[1] - line_len * math.sin(rad_80)))
-
-    # 초록 부채꼴 영역
+    # --- 이상적 범위 (초록 부채꼴: 65°~80°) ---
     overlay = img.copy()
-    pts = [wr_pt]
+    pts = [sh_pt]
     for deg in range(65, 81):
         r = math.radians(deg)
-        pts.append((int(wr_pt[0] + line_len * math.cos(r)), int(wr_pt[1] - line_len * math.sin(r))))
-    pts.append(wr_pt)
+        pts.append((int(sh_pt[0] + line_len * math.cos(r)), int(sh_pt[1] - line_len * math.sin(r))))
+    pts.append(sh_pt)
     cv2.fillPoly(overlay, [np.array(pts)], (0, 220, 100))
     cv2.addWeighted(overlay, 0.2, img, 0.8, 0, img)
 
-    # 초록 경계선
-    cv2.line(img, wr_pt, end_65, (0, 220, 100), 2, cv2.LINE_AA)
-    cv2.line(img, wr_pt, end_80, (0, 220, 100), 2, cv2.LINE_AA)
+    rad_65 = math.radians(65)
+    rad_80 = math.radians(80)
+    end_65 = (int(sh_pt[0] + line_len * math.cos(rad_65)), int(sh_pt[1] - line_len * math.sin(rad_65)))
+    end_80 = (int(sh_pt[0] + line_len * math.cos(rad_80)), int(sh_pt[1] - line_len * math.sin(rad_80)))
+    cv2.line(img, sh_pt, end_65, (0, 220, 100), 2, cv2.LINE_AA)
+    cv2.line(img, sh_pt, end_80, (0, 220, 100), 2, cv2.LINE_AA)
     cv2.putText(img, "65", (end_65[0] + 5, end_65[1] - 5),
                 cv2.FONT_HERSHEY_SIMPLEX, 0.55, (0, 220, 100), 2)
     cv2.putText(img, "80", (end_80[0] - 30, end_80[1] - 10),
                 cv2.FONT_HERSHEY_SIMPLEX, 0.55, (0, 220, 100), 2)
 
-    # --- 실제 방향 (빨강 굵은 화살표) ---
-    actual_rad = math.radians(direction_angle)
-    actual_end = (
-        int(wr_pt[0] + line_len * math.cos(actual_rad)),
-        int(wr_pt[1] - line_len * math.sin(actual_rad)),
-    )
-    cv2.arrowedLine(img, wr_pt, actual_end, (60, 76, 255), 4, cv2.LINE_AA, tipLength=0.2)
-    cv2.putText(img, f"{direction_angle}", (actual_end[0] + 10, actual_end[1]),
+    # --- 실제 방향: 어깨→손목 (빨강 화살표) ---
+    cv2.arrowedLine(img, sh_pt, wr_pt, (60, 76, 255), 4, cv2.LINE_AA, tipLength=0.15)
+    cv2.putText(img, f"{direction_angle}", (wr_pt[0] + 10, wr_pt[1] - 10),
                 cv2.FONT_HERSHEY_SIMPLEX, 0.7, (60, 76, 255), 2)
 
-    cv2.circle(img, wr_pt, 8, (255, 255, 255), -1, cv2.LINE_AA)
+    # 어깨 점
+    cv2.circle(img, sh_pt, 10, (255, 255, 255), -1, cv2.LINE_AA)
+    cv2.circle(img, sh_pt, 10, (0, 0, 0), 2, cv2.LINE_AA)
 
     _draw_legend(img, "DIRECTION", f"You: {direction_angle}", "Ideal: 65-80")
     return cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
