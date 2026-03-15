@@ -288,6 +288,7 @@ div[data-testid="stButton"] > button:disabled {
     font-size: 0.9rem;
     color: #8888A0;
     line-height: 1.6;
+    text-align: center;
 }
 
 /* metric 위젯 숨기기 (커스텀 카드 사용) */
