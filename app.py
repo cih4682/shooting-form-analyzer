@@ -142,9 +142,11 @@ def _show_menu():
     if st.session_state.get("page", "analyzer") == "admin" and is_admin:
         return "admin"
 
-    # ☰ 버튼
-    if st.button("☰", key="menu_toggle"):
-        st.session_state["menu_open"] = not st.session_state.get("menu_open", False)
+    # 좌측 상단 ☰
+    col_menu, _ = st.columns([1, 8])
+    with col_menu:
+        if st.button("☰", key="menu_toggle"):
+            st.session_state["menu_open"] = not st.session_state.get("menu_open", False)
 
     if st.session_state.get("menu_open", False):
         items = ["분석기"]
