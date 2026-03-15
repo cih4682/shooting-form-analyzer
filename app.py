@@ -181,6 +181,7 @@ def _show_menu():
 def _admin_page():
     """관리자 페이지 — 전체 화면"""
     role = st.session_state.get("user_role", "")
+    email = st.session_state.get("user_email", "")
     supabase = _init_supabase()
     if not supabase:
         return
