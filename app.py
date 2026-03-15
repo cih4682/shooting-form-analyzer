@@ -3,7 +3,7 @@ app.py — Shot Form Analyzer (Streamlit)
 """
 
 import streamlit as st
-from supabase import create_client
+from streamlit_google_auth import Authenticate
 from analyzer import (
     analyze_side_video, analyze_front_video,
     draw_skeleton, draw_front_skeleton,
@@ -13,69 +13,36 @@ from analyzer import (
 from feedback import generate_feedback, CRITERIA
 
 # ---------------------------------------------------------------------------
-# Supabase 인증
+# Google 인증 + Supabase 승인
 # ---------------------------------------------------------------------------
-SUPABASE_URL = st.secrets.get("supabase", {}).get("url", "")
-SUPABASE_KEY = st.secrets.get("supabase", {}).get("key", "")
 ADMIN_EMAILS = st.secrets.get("supabase", {}).get("admin_emails", [])
 
 def _init_supabase():
-    if SUPABASE_URL and SUPABASE_KEY:
-        return create_client(SUPABASE_URL, SUPABASE_KEY)
+    url = st.secrets.get("supabase", {}).get("url", "")
+    key = st.secrets.get("supabase", {}).get("key", "")
+    if url and key:
+        from supabase import create_client
+        return create_client(url, key)
     return None
 
-def _get_login_url():
-    """Google OAuth 로그인 URL 생성"""
-    return f"{SUPABASE_URL}/auth/v1/authorize?provider=google"
-
 def _check_auth():
-    """인증 상태 확인 — 로그인 안 됐으면 로그인 버튼 표시 후 stop"""
-    supabase = _init_supabase()
-    if not supabase:
-        return  # secrets 없으면 인증 없이 사용 (로컬 개발용)
-
-    # 세션에 유저 정보가 있으면 통과
-    if "user_email" in st.session_state:
+    """Google 로그인 확인"""
+    # secrets 없으면 인증 없이 사용 (로컬 개발용)
+    google_auth = st.secrets.get("google_auth", {})
+    if not google_auth.get("client_id", ""):
         return
 
-    # URL query param에서 access_token 확인 (JS가 hash → query로 변환)
-    params = st.query_params
-    access_token = params.get("access_token", None)
+    authenticator = Authenticate(
+        secret_credentials_path=None,
+        cookie_name="shot_form_auth",
+        cookie_key="shot_form_secret_key_123",
+        redirect_uri=google_auth.get("redirect_uri", ""),
+        client_id=google_auth.get("client_id", ""),
+        client_secret=google_auth.get("client_secret", ""),
+    )
+    authenticator.check_authentification()
 
-    if access_token:
-        try:
-            res = supabase.auth.get_user(access_token)
-            user = res.user
-            if user:
-                st.session_state["user_email"] = user.email
-                st.session_state["user_name"] = user.user_metadata.get("full_name", user.email)
-                st.query_params.clear()
-                st.rerun()
-        except Exception as e:
-            st.error(f"로그인 처리 중 오류: {e}")
-            st.query_params.clear()
-
-    # Hash fragment → query param 변환 JS (st.components.v1.html로 실행)
-    import streamlit.components.v1 as components
-    components.html("""
-    <script>
-    const hash = window.parent.location.hash.substring(1);
-    if (hash && hash.includes('access_token')) {
-        const params = new URLSearchParams(hash);
-        const accessToken = params.get('access_token');
-        if (accessToken) {
-            const url = new URL(window.parent.location);
-            url.searchParams.set('access_token', accessToken);
-            url.hash = '';
-            window.parent.location.replace(url.toString());
-        }
-    }
-    </script>
-    """, height=0)
-
-    # 로그인 버튼 표시
-    login_url = _get_login_url()
-    if login_url:
+    if not st.session_state.get("connected", False):
         st.markdown("""
         <div style="text-align:center; padding: 60px 20px 20px;">
             <div style="font-size:3rem; margin-bottom:16px;">🏀</div>
@@ -88,8 +55,12 @@ def _check_auth():
         """, unsafe_allow_html=True)
         _c1, _c2, _c3 = st.columns([1, 2, 1])
         with _c2:
-            st.link_button("🔐 Google 계정으로 로그인", login_url, use_container_width=True)
-    st.stop()
+            authenticator.login()
+        st.stop()
+
+    # 로그인 성공 — 이메일 저장
+    st.session_state["user_email"] = st.session_state.get("user_info", {}).get("email", "")
+    st.session_state["user_name"] = st.session_state.get("user_info", {}).get("name", "")
 
 def _check_approved():
     """관리자 승인 여부 확인"""
