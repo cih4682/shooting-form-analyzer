@@ -624,6 +624,16 @@ div[data-testid="stAlert"][data-baseweb*="info"] { display: none; }
         flex-wrap: nowrap !important;
     }
 
+    /* 관리자 모드 버튼 정사각형 */
+    div[data-testid="stTabs"] div[data-testid="stButton"] > button {
+        padding: 8px 0 !important;
+        font-size: 0.65rem !important;
+        min-height: 36px !important;
+        width: 36px !important;
+        height: 36px !important;
+        border-radius: 8px !important;
+    }
+
     /* 업로드 영역 모바일 — 구름 좌측 + 3줄 */
     div[data-testid="stFileUploader"] section > div:first-child {
         display: grid !important;
