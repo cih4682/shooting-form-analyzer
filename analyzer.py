@@ -469,17 +469,32 @@ def draw_shot_direction_comparison(frame, landmarks, direction_angle):
     wrist = landmarks["wrist"]
     wr_pt = tuple(map(int, wrist))
     h, w = img.shape[:2]
-    arrow_len = int(min(w, h) * 0.08)
+    arrow_len = int(min(w, h) * 0.1)
 
-    ideal_end = (wr_pt[0], wr_pt[1] - arrow_len)
-    cv2.arrowedLine(img, wr_pt, ideal_end, (0, 220, 100), 3, cv2.LINE_AA, tipLength=0.3)
+    # 이상적 방향: 72.5° (65~80 중간값) — 초록 화살표
+    ideal_angle = 72.5
+    ideal_rad = math.radians(ideal_angle)
+    ideal_end = (
+        int(wr_pt[0] + arrow_len * math.cos(ideal_rad)),
+        int(wr_pt[1] - arrow_len * math.sin(ideal_rad)),
+    )
+    cv2.arrowedLine(img, wr_pt, ideal_end, (0, 220, 100), 3, cv2.LINE_AA, tipLength=0.25)
+    cv2.putText(img, f"{ideal_angle:.0f}", (ideal_end[0] + 5, ideal_end[1] - 5),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 220, 100), 2)
 
-    rad = math.radians(direction_angle)
-    actual_end = (int(wr_pt[0] + arrow_len * math.cos(rad) * 0.3), int(wr_pt[1] - arrow_len * math.sin(rad)))
-    cv2.arrowedLine(img, wr_pt, actual_end, (60, 76, 255), 3, cv2.LINE_AA, tipLength=0.3)
+    # 실제 방향 — 빨강 화살표
+    actual_rad = math.radians(direction_angle)
+    actual_end = (
+        int(wr_pt[0] + arrow_len * math.cos(actual_rad)),
+        int(wr_pt[1] - arrow_len * math.sin(actual_rad)),
+    )
+    cv2.arrowedLine(img, wr_pt, actual_end, (60, 76, 255), 3, cv2.LINE_AA, tipLength=0.25)
+    cv2.putText(img, f"{direction_angle}", (actual_end[0] + 5, actual_end[1] - 5),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.6, (60, 76, 255), 2)
+
     cv2.circle(img, wr_pt, 8, (255, 255, 255), -1, cv2.LINE_AA)
 
-    _draw_legend(img, "DIRECTION", f"You: {direction_angle}", "Ideal: 90 (straight up)")
+    _draw_legend(img, "DIRECTION", f"You: {direction_angle}", "Ideal: 65-80")
     return cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
 
