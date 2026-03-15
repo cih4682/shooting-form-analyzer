@@ -153,21 +153,24 @@ def _show_menu():
     if st.session_state.get("menu_open", False):
         col_drop, _ = st.columns([1, 8])
         with col_drop:
-            st.markdown('<div class="menu-area">', unsafe_allow_html=True)
-            if st.button("분석기", key="go_analyzer", use_container_width=True):
-                st.session_state["menu_open"] = False
-                st.session_state["page"] = "analyzer"
-                st.rerun()
+            items = ["분석기"]
             if is_admin:
-                if st.button("관리자 모드", key="go_admin", use_container_width=True):
-                    st.session_state["menu_open"] = False
-                    st.session_state["page"] = "admin"
-                    st.rerun()
-            if st.button("로그아웃", key="logout", use_container_width=True):
+                items.append("관리자 모드")
+            items.append("로그아웃")
+            choice = st.radio(
+                "nav", items,
+                label_visibility="collapsed",
+                key="nav_radio",
+                horizontal=True,
+            )
+            if choice == "관리자 모드":
+                st.session_state["menu_open"] = False
+                st.session_state["page"] = "admin"
+                st.rerun()
+            elif choice == "로그아웃":
                 for key in list(st.session_state.keys()):
                     del st.session_state[key]
                 st.rerun()
-            st.markdown('</div>', unsafe_allow_html=True)
 
     return "analyzer"
 
@@ -527,25 +530,6 @@ div[data-testid="stFileUploader"] {
 }
 div[data-testid="stFileUploader"]:hover {
     border-color: #00D4AA !important;
-}
-
-/* 메뉴 드롭다운 버튼 — 배경 투명 + 화이트 텍스트 */
-.menu-area + div button,
-.menu-area ~ div button,
-.menu-area ~ div div[data-testid="stButton"] > button {
-    background: transparent !important;
-    color: #fff !important;
-    border: 1px solid #2A2A3A !important;
-    font-weight: 500 !important;
-    font-size: 0.85rem !important;
-    padding: 8px 0 !important;
-    font-family: 'Pretendard Variable', sans-serif !important;
-}
-.menu-area + div button:hover,
-.menu-area ~ div button:hover,
-.menu-area ~ div div[data-testid="stButton"] > button:hover {
-    border-color: #00D4AA !important;
-    color: #00D4AA !important;
 }
 
 /* 분석 버튼 */
