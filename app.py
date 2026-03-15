@@ -145,29 +145,7 @@ def _show_menu():
     # 좌측 상단 ☰
     col_menu, _ = st.columns([1, 8])
     with col_menu:
-        st.markdown("""
-        <style>
-        .menu-btn {
-            background: none !important; border: none !important;
-            color: #fff !important; font-size: 1.6rem !important;
-            cursor: pointer; padding: 4px 12px !important;
-            font-family: 'Pretendard Variable', sans-serif !important;
-        }
-        .menu-dropdown {
-            background: #1a1a2e; border: 1px solid #2A2A3A;
-            border-radius: 12px; padding: 8px 0; margin-top: 4px;
-            font-family: 'Pretendard Variable', sans-serif !important;
-        }
-        .menu-item {
-            display: block; width: 100%; padding: 12px 24px;
-            color: #D0D0E0; font-size: 0.95rem; font-weight: 500;
-            text-align: left; border: none; background: none;
-            cursor: pointer; transition: background 0.2s;
-            font-family: 'Pretendard Variable', sans-serif !important;
-        }
-        .menu-item:hover { background: #2A2A3A; color: #00D4AA; }
-        </style>
-        """, unsafe_allow_html=True)
+        st.markdown("", unsafe_allow_html=True)
 
         if st.button("☰", key="menu_toggle", help="메뉴"):
             st.session_state["menu_open"] = not st.session_state.get("menu_open", False)
@@ -175,6 +153,7 @@ def _show_menu():
     if st.session_state.get("menu_open", False):
         col_drop, _ = st.columns([1, 8])
         with col_drop:
+            st.markdown('<div class="menu-area">', unsafe_allow_html=True)
             if st.button("분석기", key="go_analyzer", use_container_width=True):
                 st.session_state["menu_open"] = False
                 st.session_state["page"] = "analyzer"
@@ -188,6 +167,7 @@ def _show_menu():
                 for key in list(st.session_state.keys()):
                     del st.session_state[key]
                 st.rerun()
+            st.markdown('</div>', unsafe_allow_html=True)
 
     return "analyzer"
 
@@ -547,6 +527,25 @@ div[data-testid="stFileUploader"] {
 }
 div[data-testid="stFileUploader"]:hover {
     border-color: #00D4AA !important;
+}
+
+/* 메뉴 드롭다운 버튼 — 배경 투명 + 화이트 텍스트 */
+.menu-area + div button,
+.menu-area ~ div button,
+.menu-area ~ div div[data-testid="stButton"] > button {
+    background: transparent !important;
+    color: #fff !important;
+    border: 1px solid #2A2A3A !important;
+    font-weight: 500 !important;
+    font-size: 0.85rem !important;
+    padding: 8px 0 !important;
+    font-family: 'Pretendard Variable', sans-serif !important;
+}
+.menu-area + div button:hover,
+.menu-area ~ div button:hover,
+.menu-area ~ div div[data-testid="stButton"] > button:hover {
+    border-color: #00D4AA !important;
+    color: #00D4AA !important;
 }
 
 /* 분석 버튼 */
