@@ -307,17 +307,24 @@ div[data-testid="stAlert"][data-baseweb*="info"] { display: none; }
     .overall-number { font-size: 2.2rem; }
     .feedback-card { padding: 12px 14px; font-size: 0.88rem; }
 
-    /* 업로드 영역 모바일 — 글씨 줄이고 두줄로 */
-    div[data-testid="stFileUploader"] section > div {
-        flex-direction: column !important;
-        align-items: center !important;
-        gap: 4px !important;
+    /* 업로드 영역 모바일 — 구름 좌측 + 3줄 */
+    div[data-testid="stFileUploader"] section > div:first-child {
+        display: grid !important;
+        grid-template-columns: 40px 1fr !important;
+        grid-template-rows: auto auto auto !important;
+        align-items: start !important;
+        gap: 0 8px !important;
+    }
+    div[data-testid="stFileUploader"] section > div:first-child > svg {
+        grid-row: 1 / 4 !important;
+        grid-column: 1 !important;
+        align-self: center !important;
     }
     div[data-testid="stFileUploader"] section span,
     div[data-testid="stFileUploader"] section small,
     div[data-testid="stFileUploader"] section p {
         font-size: 0.7rem !important;
-        text-align: center !important;
+        grid-column: 2 !important;
     }
 }
 </style>
