@@ -226,15 +226,12 @@ def _admin_page():
     with tab_pending:
         if pending_users:
             for pu in pending_users:
-                st.markdown(f"""<div style="font-family:'Pretendard Variable',sans-serif;
-                    font-size:0.85rem; color:#D0D0E0; padding:8px 0;
-                    border-bottom:1px solid #2A2A3A;">{pu['email']}</div>""",
-                    unsafe_allow_html=True)
-                c1, c2 = st.columns(2)
-                c1.button("승인", key=f"approve_{pu['email']}", type="primary",
+                c1, c2, c3 = st.columns([5, 2, 2])
+                c1.markdown(f"<div style='font-size:0.85rem;color:#D0D0E0;padding:6px 0;'>{pu['email']}</div>", unsafe_allow_html=True)
+                c2.button("승인", key=f"approve_{pu['email']}", type="primary",
                           use_container_width=True,
                           on_click=lambda e=pu["email"]: _approve_user(supabase, e))
-                c2.button("삭제", key=f"del_p_{pu['email']}",
+                c3.button("삭제", key=f"del_p_{pu['email']}",
                           use_container_width=True,
                           on_click=lambda e=pu["email"]: _delete_pending(supabase, e))
         else:
@@ -247,20 +244,19 @@ def _admin_page():
         users = [r for r in approved_list if r.get("role") == "user"]
         if users:
             for u in users:
-                st.markdown(f"""<div style="font-family:'Pretendard Variable',sans-serif;
-                    font-size:0.85rem; color:#D0D0E0; padding:8px 0;
-                    border-bottom:1px solid #2A2A3A;">{u['email']}</div>""",
-                    unsafe_allow_html=True)
                 if role == "superadmin":
-                    c1, c2 = st.columns(2)
-                    c1.button("관리자 지정", key=f"promote_{u['email']}",
+                    c1, c2, c3 = st.columns([5, 2, 2])
+                    c1.markdown(f"<div style='font-size:0.85rem;color:#D0D0E0;padding:6px 0;'>{u['email']}</div>", unsafe_allow_html=True)
+                    c2.button("관리자 지정", key=f"promote_{u['email']}",
                               use_container_width=True,
                               on_click=lambda e=u["email"]: _promote_user(supabase, e))
-                    c2.button("삭제", key=f"del_u_{u['email']}",
+                    c3.button("삭제", key=f"del_u_{u['email']}",
                               use_container_width=True,
                               on_click=lambda e=u["email"]: _delete_user(supabase, e))
                 else:
-                    st.button("삭제", key=f"del_u_{u['email']}",
+                    c1, c2 = st.columns([7, 2])
+                    c1.markdown(f"<div style='font-size:0.85rem;color:#D0D0E0;padding:6px 0;'>{u['email']}</div>", unsafe_allow_html=True)
+                    c2.button("삭제", key=f"del_u_{u['email']}",
                               use_container_width=True,
                               on_click=lambda e=u["email"]: _delete_user(supabase, e))
         else:
@@ -274,11 +270,9 @@ def _admin_page():
             admins = [r for r in approved_list if r.get("role") == "admin"]
             if admins:
                 for a in admins:
-                    st.markdown(f"""<div style="font-family:'Pretendard Variable',sans-serif;
-                        font-size:0.85rem; color:#D0D0E0; padding:8px 0;
-                        border-bottom:1px solid #2A2A3A;">{a['email']}</div>""",
-                        unsafe_allow_html=True)
-                    st.button("관리자 해제", key=f"demote_{a['email']}",
+                    c1, c2 = st.columns([7, 2])
+                    c1.markdown(f"<div style='font-size:0.85rem;color:#D0D0E0;padding:6px 0;'>{a['email']}</div>", unsafe_allow_html=True)
+                    c2.button("해제", key=f"demote_{a['email']}",
                               use_container_width=True,
                               on_click=lambda e=a["email"]: _demote_user(supabase, e))
             else:
