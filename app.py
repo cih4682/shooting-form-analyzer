@@ -226,7 +226,7 @@ def _admin_page():
     with tab_pending:
         if pending_users:
             for pu in pending_users:
-                c1, c2, c3 = st.columns([5, 2, 2])
+                c1, c2, c3 = st.columns([4, 3, 3])
                 c1.markdown(f"<div style='font-size:0.85rem;color:#D0D0E0;padding:6px 0;'>{pu['email']}</div>", unsafe_allow_html=True)
                 c2.button("승인", key=f"approve_{pu['email']}", type="primary",
                           use_container_width=True,
@@ -245,7 +245,7 @@ def _admin_page():
         if users:
             for u in users:
                 if role == "superadmin":
-                    c1, c2, c3 = st.columns([5, 2, 2])
+                    c1, c2, c3 = st.columns([4, 3, 3])
                     c1.markdown(f"<div style='font-size:0.85rem;color:#D0D0E0;padding:6px 0;'>{u['email']}</div>", unsafe_allow_html=True)
                     c2.button("관리자", key=f"promote_{u['email']}",
                               use_container_width=True,
@@ -647,15 +647,6 @@ div[data-testid="stAlert"][data-baseweb*="info"] { display: none; }
     .feedback-card { padding: 12px 14px; font-size: 0.88rem; }
     div[data-testid="stRadio"] label {
         padding: 6px 12px !important;
-        font-size: 0.75rem !important;
-    }
-
-    /* 관리자 페이지 버튼 + 텍스트 모바일 */
-    div[data-testid="stButton"] > button {
-        font-size: 0.7rem !important;
-        padding: 6px 4px !important;
-    }
-    div[data-testid="stColumn"] > div > div > div[data-testid="stMarkdownContainer"] {
         font-size: 0.75rem !important;
     }
 
