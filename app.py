@@ -181,7 +181,6 @@ def _show_menu():
 def _admin_page():
     """관리자 페이지 — 전체 화면"""
     role = st.session_state.get("user_role", "")
-    email = st.session_state.get("user_email", "")
     supabase = _init_supabase()
     if not supabase:
         return
@@ -227,85 +226,71 @@ def _admin_page():
     # --- 승인 대기 ---
     with tab_pending:
         if pending_users:
-            for i, pu in enumerate(pending_users):
-                _admin_user_row(supabase, pu["email"], ["승인", "삭제"],
-                                [f"approve_{i}", f"del_p_{i}"],
-                                [lambda e=pu["email"]: _do_approve(supabase, e),
-                                 lambda e=pu["email"]: _do_del_pending(supabase, e)])
+            for pu in pending_users:
+                col1, col2, col3 = st.columns([4, 1, 1])
+                col1.markdown(f"**{pu['email']}**")
+                if col2.button("승인", key=f"approve_{pu['email']}", type="primary"):
+                    try:
+                        supabase.table("approved_users").insert({"email": pu["email"], "role": "user"}).execute()
+                        supabase.table("pending_users").delete().eq("email", pu["email"]).execute()
+                        st.rerun()
+                    except Exception:
+                        st.error("승인 실패")
+                if col3.button("삭제", key=f"del_p_{pu['email']}"):
+                    try:
+                        supabase.table("pending_users").delete().eq("email", pu["email"]).execute()
+                        st.rerun()
+                    except Exception:
+                        st.error("삭제 실패")
         else:
-            st.markdown("<div style='color:#8888A0;font-size:0.85rem;padding:12px 0;'>대기 중인 사용자가 없습니다.</div>", unsafe_allow_html=True)
+            st.info("대기 중인 사용자가 없습니다.")
 
     # --- 승인된 사용자 ---
     with tab_approved:
         users = [r for r in approved_list if r.get("role") == "user"]
         if users:
-            for i, u in enumerate(users):
-                btns = ["관리자", "삭제"] if role == "superadmin" else ["삭제"]
-                keys = [f"promote_{i}", f"del_u_{i}"] if role == "superadmin" else [f"del_u_{i}"]
-                cbs = ([lambda e=u["email"]: _do_promote(supabase, e),
-                        lambda e=u["email"]: _do_del_user(supabase, e)]
-                       if role == "superadmin" else
-                       [lambda e=u["email"]: _do_del_user(supabase, e)])
-                _admin_user_row(supabase, u["email"], btns, keys, cbs)
+            for u in users:
+                col1, col2, col3 = st.columns([4, 1, 1])
+                col1.markdown(f"**{u['email']}**")
+                if role == "superadmin":
+                    if col2.button("관리자 지정", key=f"promote_{u['email']}"):
+                        try:
+                            supabase.table("approved_users").update({"role": "admin"}).eq("email", u["email"]).execute()
+                            st.rerun()
+                        except Exception:
+                            st.error("변경 실패")
+                if col3.button("삭제", key=f"del_u_{u['email']}"):
+                    try:
+                        supabase.table("approved_users").delete().eq("email", u["email"]).execute()
+                        st.rerun()
+                    except Exception:
+                        st.error("삭제 실패")
         else:
-            st.markdown("<div style='color:#8888A0;font-size:0.85rem;padding:12px 0;'>승인된 일반 사용자가 없습니다.</div>", unsafe_allow_html=True)
+            st.info("승인된 일반 사용자가 없습니다.")
 
-    # --- 관리자 목록 ---
+    # --- 관리자 목록 (최고관리자만) ---
     with tab_admin:
         if role == "superadmin":
             admins = [r for r in approved_list if r.get("role") == "admin"]
             if admins:
-                for i, a in enumerate(admins):
-                    _admin_user_row(supabase, a["email"], ["해제"], [f"demote_{i}"],
-                                    [lambda e=a["email"]: _do_demote(supabase, e)])
+                for a in admins:
+                    col1, col2 = st.columns([4, 1])
+                    col1.markdown(f"**{a['email']}**")
+                    if col2.button("관리자 해제", key=f"demote_{a['email']}"):
+                        try:
+                            supabase.table("approved_users").update({"role": "user"}).eq("email", a["email"]).execute()
+                            st.rerun()
+                        except Exception:
+                            st.error("변경 실패")
             else:
-                st.markdown("<div style='color:#8888A0;font-size:0.85rem;padding:12px 0;'>지정된 관리자가 없습니다.</div>", unsafe_allow_html=True)
-            st.markdown(f"<div style='color:#555;font-size:0.75rem;padding:12px 0;'>최고관리자: {email}</div>", unsafe_allow_html=True)
+                st.info("지정된 관리자가 없습니다.")
+
+            st.markdown("---")
+            st.caption("최고관리자: " + st.session_state.get("user_email", ""))
         else:
-            st.markdown("<div style='color:#8888A0;font-size:0.85rem;padding:12px 0;'>최고관리자만 관리자를 관리할 수 있습니다.</div>", unsafe_allow_html=True)
+            st.warning("최고관리자만 관리자를 관리할 수 있습니다.")
 
     st.stop()
-
-def _admin_user_row(supabase, email_addr, btn_labels, btn_keys, btn_callbacks):
-    """한 줄: 이메일 + 버튼들 (HTML 가로 배치, st.button은 세로로 나열)"""
-    # 이메일 표시
-    st.markdown(f"""<div style="display:flex; align-items:center; gap:8px;
-        padding:6px 0; border-bottom:1px solid #2A2A3A;
-        font-family:'Pretendard Variable',sans-serif; flex-wrap:nowrap;">
-        <span style="flex:1; font-size:0.8rem; color:#D0D0E0;
-            overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{email_addr}</span>
-        {''.join(f'<span class="admin-btn-placeholder" style="min-width:50px;"></span>' for _ in btn_labels)}
-    </div>""", unsafe_allow_html=True)
-    # 버튼들을 가로로 — st.columns 대신 작은 비율
-    if len(btn_labels) == 2:
-        b1, b2, _ = st.columns([1, 1, 3])
-        if b1.button(btn_labels[0], key=btn_keys[0]):
-            btn_callbacks[0]()
-            st.rerun()
-        if b2.button(btn_labels[1], key=btn_keys[1]):
-            btn_callbacks[1]()
-            st.rerun()
-    elif len(btn_labels) == 1:
-        b1, _ = st.columns([1, 4])
-        if b1.button(btn_labels[0], key=btn_keys[0]):
-            btn_callbacks[0]()
-            st.rerun()
-
-def _do_approve(supabase, email):
-    supabase.table("approved_users").insert({"email": email, "role": "user"}).execute()
-    supabase.table("pending_users").delete().eq("email", email).execute()
-
-def _do_del_pending(supabase, email):
-    supabase.table("pending_users").delete().eq("email", email).execute()
-
-def _do_promote(supabase, email):
-    supabase.table("approved_users").update({"role": "admin"}).eq("email", email).execute()
-
-def _do_del_user(supabase, email):
-    supabase.table("approved_users").delete().eq("email", email).execute()
-
-def _do_demote(supabase, email):
-    supabase.table("approved_users").update({"role": "user"}).eq("email", email).execute()
 
 # ---------------------------------------------------------------------------
 # 페이지 설정
@@ -631,29 +616,6 @@ div[data-testid="stAlert"][data-baseweb*="info"] { display: none; }
     .overall-circle { width: 110px; height: 110px; }
     .overall-number { font-size: 2.2rem; }
     .feedback-card { padding: 12px 14px; font-size: 0.88rem; }
-    div[data-testid="stRadio"] label {
-        padding: 6px 10px !important;
-        font-size: 0.7rem !important;
-    }
-    div[data-testid="stRadio"] > div {
-        flex-wrap: nowrap !important;
-    }
-
-    /* 관리자 모드 — 컬럼 강제 한줄 + 축소 */
-    div[data-testid="stTabs"] div[data-testid="stHorizontalBlock"] {
-        flex-wrap: nowrap !important;
-        gap: 4px !important;
-    }
-    div[data-testid="stTabs"] div[data-testid="stButton"] > button {
-        padding: 4px 6px !important;
-        font-size: 0.6rem !important;
-        min-height: 28px !important;
-        border-radius: 6px !important;
-    }
-    div[data-testid="stTabs"] div[data-testid="stColumn"] p,
-    div[data-testid="stTabs"] div[data-testid="stColumn"] span {
-        font-size: 0.65rem !important;
-    }
 
     /* 업로드 영역 모바일 — 구름 좌측 + 3줄 */
     div[data-testid="stFileUploader"] section > div:first-child {
