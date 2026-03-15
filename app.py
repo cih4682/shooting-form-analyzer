@@ -175,16 +175,16 @@ def _show_menu():
     if st.session_state.get("menu_open", False):
         col_drop, _ = st.columns([1, 8])
         with col_drop:
-            if st.button("🏀  분석기", key="go_analyzer", use_container_width=True):
+            if st.button("분석기", key="go_analyzer", use_container_width=True):
                 st.session_state["menu_open"] = False
                 st.session_state["page"] = "analyzer"
                 st.rerun()
             if is_admin:
-                if st.button("⚙️  관리자 모드", key="go_admin", use_container_width=True):
+                if st.button("관리자 모드", key="go_admin", use_container_width=True):
                     st.session_state["menu_open"] = False
                     st.session_state["page"] = "admin"
                     st.rerun()
-            if st.button("🚪  로그아웃", key="logout", use_container_width=True):
+            if st.button("로그아웃", key="logout", use_container_width=True):
                 for key in list(st.session_state.keys()):
                     del st.session_state[key]
                 st.rerun()
