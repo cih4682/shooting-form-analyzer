@@ -18,8 +18,15 @@ from mediapipe.tasks.python import BaseOptions, vision
 # 모델 로드
 # ---------------------------------------------------------------------------
 _MODEL_PATH = os.path.join(os.path.dirname(__file__), "pose_landmarker_full.task")
-with open(_MODEL_PATH, "rb") as _f:
-    _MODEL_BYTES = _f.read()
+_MODEL_BYTES = None
+
+def _get_model_bytes():
+    """모델 바이트를 지연 로드한다 (Cloud 환경 호환)."""
+    global _MODEL_BYTES
+    if _MODEL_BYTES is None:
+        with open(_MODEL_PATH, "rb") as f:
+            _MODEL_BYTES = f.read()
+    return _MODEL_BYTES
 
 # ---------------------------------------------------------------------------
 # 랜드마크 인덱스
@@ -79,7 +86,7 @@ def _open_video(video_bytes):
 def _create_landmarker():
     """PoseLandmarker 인스턴스 생성."""
     options = vision.PoseLandmarkerOptions(
-        base_options=BaseOptions(model_asset_buffer=_MODEL_BYTES),
+        base_options=BaseOptions(model_asset_buffer=_get_model_bytes()),
         running_mode=vision.RunningMode.VIDEO,
         min_pose_detection_confidence=0.5,
         min_tracking_confidence=0.5,
