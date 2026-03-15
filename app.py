@@ -227,8 +227,8 @@ def _admin_page():
     with tab_pending:
         if pending_users:
             for pu in pending_users:
-                col1, col2, col3 = st.columns([4, 1, 1])
-                col1.markdown(f"**{pu['email']}**")
+                col1, col2, col3 = st.columns([3, 1, 1])
+                col1.markdown(f"<span style='font-size:0.8rem;'>{pu['email']}</span>", unsafe_allow_html=True)
                 if col2.button("승인", key=f"approve_{pu['email']}", type="primary"):
                     try:
                         supabase.table("approved_users").insert({"email": pu["email"], "role": "user"}).execute()
@@ -250,10 +250,10 @@ def _admin_page():
         users = [r for r in approved_list if r.get("role") == "user"]
         if users:
             for u in users:
-                col1, col2, col3 = st.columns([4, 1, 1])
-                col1.markdown(f"**{u['email']}**")
+                col1, col2, col3 = st.columns([3, 1, 1])
+                col1.markdown(f"<span style='font-size:0.8rem;'>{u['email']}</span>", unsafe_allow_html=True)
                 if role == "superadmin":
-                    if col2.button("관리자 지정", key=f"promote_{u['email']}"):
+                    if col2.button("관리자", key=f"promote_{u['email']}"):
                         try:
                             supabase.table("approved_users").update({"role": "admin"}).eq("email", u["email"]).execute()
                             st.rerun()
@@ -274,8 +274,8 @@ def _admin_page():
             admins = [r for r in approved_list if r.get("role") == "admin"]
             if admins:
                 for a in admins:
-                    col1, col2 = st.columns([4, 1])
-                    col1.markdown(f"**{a['email']}**")
+                    col1, col2 = st.columns([3, 1])
+                    col1.markdown(f"<span style='font-size:0.8rem;'>{a['email']}</span>", unsafe_allow_html=True)
                     if col2.button("관리자 해제", key=f"demote_{a['email']}"):
                         try:
                             supabase.table("approved_users").update({"role": "user"}).eq("email", a["email"]).execute()
