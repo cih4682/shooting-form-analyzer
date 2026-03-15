@@ -391,8 +391,10 @@ sport_key = "basketball" if sport == "Basketball" else "netball"
 
 # 가이드 안내
 guide_text = (
-    "<b>측면</b> 영상, <b>정면</b> 영상을 올려주세요 (둘 다 또는 하나만 가능). "
-    "슛하는 팔이 카메라 쪽을 향하게, 전신이 나오게, 2~10초 클립."
+    "<b>측면 영상</b>, <b>정면 영상</b>을 올려주세요.<br>"
+    "(둘 다 또는 하나만 올려도 가능합니다.)<br>"
+    "슛하는 팔이 카메라 쪽을 향하게 촬영하세요.<br>"
+    "전신이 나오게하고, 2-10초 클립으로 업로드!"
 )
 st.markdown(f'<div class="guide-box">{guide_text}</div>', unsafe_allow_html=True)
 st.markdown("<br>", unsafe_allow_html=True)
