@@ -614,7 +614,7 @@ if analyze_btn and can_analyze:
 st.markdown('<div class="section-divider"></div>', unsafe_allow_html=True)
 st.markdown(
     '<div class="privacy-note">'
-    'PRIVACY — 업로드된 영상은 분석 후 즉시 삭제됩니다 · 외부 전송 없음 · 결과 저장 없음'
+    'PRIVACY<br>업로드된 영상은 분석 후 즉시 삭제됩니다.<br>외부 전송 및 결과는 저장되지 않습니다.'
     '</div>',
     unsafe_allow_html=True,
 )
