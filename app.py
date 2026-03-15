@@ -3,8 +3,12 @@ app.py — Shot Form Analyzer (Streamlit)
 """
 
 import streamlit as st
-from analyzer import analyze_side_video, analyze_front_video, draw_skeleton, draw_front_skeleton
-from feedback import generate_feedback
+from analyzer import (
+    analyze_side_video, analyze_front_video,
+    draw_skeleton, draw_front_skeleton,
+    draw_angle_comparison, draw_lean_comparison,
+)
+from feedback import generate_feedback, CRITERIA
 
 # ---------------------------------------------------------------------------
 # 페이지 설정
@@ -285,15 +289,24 @@ def render_score_card(label, score):
     </div>
     """, unsafe_allow_html=True)
 
-def render_feedback(title, text, score):
+def render_feedback(title, text, score, comparison_img=None):
     cls = get_score_class(score)
     color_map = {"perfect": "#00D4AA", "good": "#00A3FF", "warning": "#FFB800", "danger": "#FF4757"}
-    st.markdown(f"""
-    <div class="feedback-card feedback-{cls}">
-        <div class="feedback-title" style="color:{color_map[cls]};">{title}</div>
-        {text}
-    </div>
-    """, unsafe_allow_html=True)
+    if comparison_img is not None:
+        with st.expander(f"{title} — {score}점  (클릭하여 자세 비교 보기)", expanded=False):
+            st.image(comparison_img, use_container_width=True)
+            st.markdown(f"""
+            <div class="feedback-card feedback-{cls}">
+                {text}
+            </div>
+            """, unsafe_allow_html=True)
+    else:
+        st.markdown(f"""
+        <div class="feedback-card feedback-{cls}">
+            <div class="feedback-title" style="color:{color_map[cls]};">{title}</div>
+            {text}
+        </div>
+        """, unsafe_allow_html=True)
 
 def render_overall(scores):
     avg = round(sum(scores) / len(scores))
@@ -481,15 +494,48 @@ if analyze_btn and can_analyze:
         st.markdown('<div class="section-divider"></div>', unsafe_allow_html=True)
 
         # =================================================================
-        # 피드백
+        # 피드백 + 각도 비교 이미지
         # =================================================================
+        c = CRITERIA[sport_key]
+
         if side_result:
-            render_feedback("ELBOW", fb["elbow_feedback"], fb["elbow_score"])
-            render_feedback("KNEE", fb["knee_feedback"], fb["knee_score"])
-            render_feedback("POSTURE", fb["lean_feedback"], fb["lean_score"])
+            rl = side_result["release_landmarks"]
+            sl = side_result["setup_landmarks"]
+
+            # 팔꿈치 비교 이미지
+            elbow_img = draw_angle_comparison(
+                side_result["release_frame"],
+                rl["shoulder"], rl["elbow"], rl["wrist"],
+                side_result["elbow_angle"],
+                c["elbow"]["ideal_min"], c["elbow"]["ideal_max"],
+                label="ELBOW",
+            )
+            render_feedback("ELBOW", fb["elbow_feedback"], fb["elbow_score"], elbow_img)
+
+            # 무릎 비교 이미지
+            knee_img = draw_angle_comparison(
+                side_result["setup_frame"],
+                sl["hip"], sl["knee"], sl["ankle"],
+                side_result["knee_angle"],
+                c["knee"]["ideal_min"], c["knee"]["ideal_max"],
+                label="KNEE",
+            )
+            render_feedback("KNEE", fb["knee_feedback"], fb["knee_score"], knee_img)
+
+            # 상체 기울기 비교 이미지
+            lean_img = draw_lean_comparison(
+                side_result["release_frame"],
+                rl["shoulder"], rl["hip"],
+                side_result["lean_angle"],
+                c["lean"]["ideal_max"],
+                label="POSTURE",
+            )
+            render_feedback("POSTURE", fb["lean_feedback"], fb["lean_score"], lean_img)
+
             if sport_key == "netball":
                 render_feedback("SHOT HEIGHT", fb["shot_height_feedback"], fb["shot_height_score"])
                 render_feedback("DIRECTION", fb["shot_direction_feedback"], fb["shot_direction_score"])
+
         if front_result:
             render_feedback("ALIGNMENT", fb["alignment_feedback"], fb["alignment_score"])
             render_feedback("SHOULDERS", fb["shoulder_level_feedback"], fb["shoulder_level_score"])
