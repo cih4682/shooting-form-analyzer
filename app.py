@@ -82,7 +82,7 @@ div[data-testid="stRadio"] > div {
     background: #16161F;
     border-radius: 12px;
     padding: 4px;
-    display: inline-flex !important;
+    display: flex !important;
     width: fit-content !important;
     margin: 0 auto !important;
 }
