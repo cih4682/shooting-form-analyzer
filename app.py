@@ -616,6 +616,10 @@ div[data-testid="stAlert"][data-baseweb*="info"] { display: none; }
     .overall-circle { width: 110px; height: 110px; }
     .overall-number { font-size: 2.2rem; }
     .feedback-card { padding: 12px 14px; font-size: 0.88rem; }
+    div[data-testid="stRadio"] label {
+        padding: 6px 12px !important;
+        font-size: 0.75rem !important;
+    }
 
     /* 업로드 영역 모바일 — 구름 좌측 + 3줄 */
     div[data-testid="stFileUploader"] section > div:first-child {
