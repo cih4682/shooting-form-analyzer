@@ -65,6 +65,7 @@ iframe[title="streamlit_badge"] {display: none !important;}
     -webkit-text-fill-color: transparent;
     margin-bottom: 0;
     line-height: 1.1;
+    text-align: center;
 }
 .hero-subtitle {
     font-size: 1.05rem;
@@ -72,9 +73,13 @@ iframe[title="streamlit_badge"] {display: none !important;}
     font-weight: 400;
     margin-top: 4px;
     margin-bottom: 24px;
+    text-align: center;
 }
 
 /* 종목 탭 스타일 */
+div[data-testid="stRadio"] {
+    text-align: center;
+}
 div[data-testid="stRadio"] > div {
     gap: 0;
     background: #16161F;
