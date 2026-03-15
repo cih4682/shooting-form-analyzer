@@ -142,7 +142,15 @@ def _show_menu():
     if st.session_state.get("page", "analyzer") == "admin" and is_admin:
         return "admin"
 
-    # 좌측 상단 ☰
+    # 좌측 상단 ☰ — 흰색 깔끔한 네모 스타일
+    st.markdown("""<style>
+    div[data-testid="stButton"] > button[kind="secondary"]:first-child {
+        background: transparent !important; border: 1px solid #3A3A4A !important;
+        color: #fff !important; font-size: 1.4rem !important;
+        padding: 2px 10px !important; border-radius: 8px !important;
+        min-height: 0 !important; line-height: 1.2 !important;
+    }
+    </style>""", unsafe_allow_html=True)
     col_menu, _ = st.columns([1, 8])
     with col_menu:
         if st.button("☰", key="menu_toggle"):
