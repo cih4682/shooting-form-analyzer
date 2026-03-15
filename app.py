@@ -77,9 +77,15 @@ iframe[title="streamlit_badge"] {display: none !important;}
 }
 
 /* 종목 탭 스타일 */
+div:has(> div[data-testid="stRadio"]) {
+    display: flex !important;
+    justify-content: center !important;
+}
 div[data-testid="stRadio"] {
     display: flex !important;
     justify-content: center !important;
+    width: 100% !important;
+    text-align: center !important;
 }
 div[data-testid="stRadio"] > div {
     gap: 0;
@@ -87,7 +93,7 @@ div[data-testid="stRadio"] > div {
     border-radius: 12px;
     padding: 4px;
     display: inline-flex !important;
-    justify-content: center !important;
+    margin: 0 auto !important;
 }
 div[data-testid="stRadio"] label {
     padding: 10px 32px !important;
