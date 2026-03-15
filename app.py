@@ -304,6 +304,14 @@ div[data-testid="stMetric"] { display: none; }
 /* 기본 info 박스 숨기기 (커스텀 사용) — error는 표시 */
 div[data-testid="stAlert"][data-baseweb*="info"] { display: none; }
 
+/* 태블릿 세로 모드 */
+@media (min-width: 769px) and (max-width: 1024px) {
+    div[data-testid="stFileUploader"] section > div:first-child {
+        flex-wrap: nowrap !important;
+        white-space: nowrap !important;
+    }
+}
+
 /* 모바일 반응형 */
 @media (max-width: 768px) {
     .hero-title { font-size: 1.8rem; }
