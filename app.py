@@ -6,7 +6,8 @@ import streamlit as st
 from analyzer import (
     analyze_side_video, analyze_front_video,
     draw_skeleton, draw_front_skeleton,
-    draw_angle_comparison, draw_lean_comparison, draw_front_comparison,
+    draw_angle_comparison, draw_lean_comparison,
+    draw_front_comparison, draw_shot_height_comparison, draw_shot_direction_comparison,
 )
 from feedback import generate_feedback, CRITERIA
 
@@ -576,8 +577,19 @@ if analyze_btn and can_analyze:
             render_feedback("POSTURE", fb["lean_feedback"], fb["lean_score"], lean_img)
 
             if sport_key == "netball":
-                render_feedback("SHOT HEIGHT", fb["shot_height_feedback"], fb["shot_height_score"])
-                render_feedback("DIRECTION", fb["shot_direction_feedback"], fb["shot_direction_score"])
+                # 슛 높이 비교 이미지
+                height_img = draw_shot_height_comparison(
+                    side_result["setup_frame"], sl,
+                    side_result["shot_height_above_head"],
+                )
+                render_feedback("SHOT HEIGHT", fb["shot_height_feedback"], fb["shot_height_score"], height_img)
+
+                # 슛 방향 비교 이미지
+                direction_img = draw_shot_direction_comparison(
+                    side_result["release_frame"], rl,
+                    side_result["shot_direction_angle"],
+                )
+                render_feedback("DIRECTION", fb["shot_direction_feedback"], fb["shot_direction_score"], direction_img)
 
         if front_result:
             fl = front_result["front_landmarks"]

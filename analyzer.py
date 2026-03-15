@@ -542,6 +542,85 @@ def draw_lean_comparison(frame, shoulder, hip, actual_angle, ideal_max, label=""
     return cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
 
+def draw_shot_height_comparison(frame, landmarks, is_above_head):
+    """슛 시작 높이 비교: 손목 위치 vs 머리 위치."""
+    img = frame.copy()
+    wrist = landmarks["wrist"]
+    head_top_y = landmarks["head_top_y"]
+    eye_y = landmarks["eye_y"]
+    nose = landmarks["nose"]
+
+    wr_pt = tuple(map(int, wrist))
+    h, w = img.shape[:2]
+
+    # 머리 위 기준선 (빨강)
+    head_y = int(head_top_y)
+    cv2.line(img, (0, head_y), (w, head_y), (0, 0, 255), 2, cv2.LINE_AA)
+    cv2.putText(img, "HEAD TOP", (15, head_y - 10),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
+
+    # 손목 위치 (초록)
+    cv2.circle(img, wr_pt, 12, (0, 220, 100), -1, cv2.LINE_AA)
+    cv2.circle(img, wr_pt, 12, (255, 255, 255), 2, cv2.LINE_AA)
+    cv2.putText(img, "WRIST", (wr_pt[0] + 15, wr_pt[1] + 5),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 220, 100), 2)
+
+    # 범례
+    legend_y = 40
+    cv2.putText(img, "SHOT HEIGHT", (15, legend_y),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.9, (255, 255, 255), 2, cv2.LINE_AA)
+    legend_y += 35
+    status = "Above head" if is_above_head else "Below head"
+    color = (0, 220, 100) if is_above_head else (0, 0, 255)
+    cv2.rectangle(img, (15, legend_y - 12), (35, legend_y + 4), color, -1)
+    cv2.putText(img, f"You: {status}", (42, legend_y + 2),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
+    legend_y += 28
+    cv2.rectangle(img, (15, legend_y - 12), (35, legend_y + 4), (0, 0, 255), -1)
+    cv2.putText(img, "Ideal: Above head", (42, legend_y + 2),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
+
+    return cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+
+
+def draw_shot_direction_comparison(frame, landmarks, direction_angle, prev_landmarks=None):
+    """슛 방향 비교: 손목 이동 벡터 (위로 vs 앞으로)."""
+    img = frame.copy()
+    wrist = landmarks["wrist"]
+    wr_pt = tuple(map(int, wrist))
+    h, w = img.shape[:2]
+    arrow_len = int(min(w, h) * 0.08)
+
+    # 이상적 방향: 수직 위로 (빨강)
+    ideal_end = (wr_pt[0], wr_pt[1] - arrow_len)
+    cv2.arrowedLine(img, wr_pt, ideal_end, (0, 0, 255), 3, cv2.LINE_AA, tipLength=0.3)
+
+    # 실제 방향 (초록) — direction_angle 기준 (90°=위, 0°=앞)
+    rad = math.radians(direction_angle)
+    actual_end = (
+        int(wr_pt[0] + arrow_len * math.cos(rad) * 0.3),  # 약간 앞으로
+        int(wr_pt[1] - arrow_len * math.sin(rad)),  # 위로
+    )
+    cv2.arrowedLine(img, wr_pt, actual_end, (0, 220, 100), 3, cv2.LINE_AA, tipLength=0.3)
+
+    cv2.circle(img, wr_pt, 8, (255, 255, 255), -1, cv2.LINE_AA)
+
+    # 범례
+    legend_y = 40
+    cv2.putText(img, "DIRECTION", (15, legend_y),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.9, (255, 255, 255), 2, cv2.LINE_AA)
+    legend_y += 35
+    cv2.rectangle(img, (15, legend_y - 12), (35, legend_y + 4), (0, 220, 100), -1)
+    cv2.putText(img, f"You: {direction_angle}", (42, legend_y + 2),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 220, 100), 2)
+    legend_y += 28
+    cv2.rectangle(img, (15, legend_y - 12), (35, legend_y + 4), (0, 0, 255), -1)
+    cv2.putText(img, "Ideal: 90 (straight up)", (42, legend_y + 2),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
+
+    return cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+
+
 def draw_front_skeleton(frame, landmarks, angles_text=None):
     """정면 프레임에 양쪽 어깨/팔꿈치/손목을 그린다."""
     img = frame.copy()
