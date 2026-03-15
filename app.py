@@ -390,6 +390,7 @@ if analyze_btn and can_analyze:
         if front_result:
             fb_kwargs["alignment_angle"] = front_result["alignment_angle"]
             fb_kwargs["shoulder_level_angle"] = front_result["shoulder_level_angle"]
+            fb_kwargs["finger_direction_angle"] = front_result["finger_direction_angle"]
 
         fb = generate_feedback(sport_key, **fb_kwargs)
 
@@ -404,7 +405,7 @@ if analyze_btn and can_analyze:
             if sport_key == "netball":
                 all_scores += [fb["shot_height_score"], fb["shot_direction_score"]]
         if front_result:
-            all_scores += [fb["alignment_score"], fb["shoulder_level_score"]]
+            all_scores += [fb["alignment_score"], fb["shoulder_level_score"], fb["finger_direction_score"]]
 
         render_overall(all_scores)
         st.markdown('<div class="section-divider"></div>', unsafe_allow_html=True)
@@ -472,9 +473,10 @@ if analyze_btn and can_analyze:
 
         if front_result:
             st.markdown("<br>", unsafe_allow_html=True)
-            front_cols = st.columns(2)
+            front_cols = st.columns(3)
             with front_cols[0]: render_score_card("ALIGNMENT", fb["alignment_score"])
             with front_cols[1]: render_score_card("SHOULDERS", fb["shoulder_level_score"])
+            with front_cols[2]: render_score_card("FINGER", fb["finger_direction_score"])
 
         st.markdown('<div class="section-divider"></div>', unsafe_allow_html=True)
 
@@ -491,6 +493,7 @@ if analyze_btn and can_analyze:
         if front_result:
             render_feedback("ALIGNMENT", fb["alignment_feedback"], fb["alignment_score"])
             render_feedback("SHOULDERS", fb["shoulder_level_feedback"], fb["shoulder_level_score"])
+            render_feedback("FINGER", fb["finger_direction_feedback"], fb["finger_direction_score"])
 
 # ---------------------------------------------------------------------------
 # 하단

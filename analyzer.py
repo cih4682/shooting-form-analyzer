@@ -289,6 +289,7 @@ def analyze_front_video(video_bytes: bytes):
     result = {
         "alignment_angle": 0.0,
         "shoulder_level_angle": 0.0,
+        "finger_direction_angle": 0.0,
         "front_frame": None,
         "front_landmarks": None,
         "error": None,
@@ -307,12 +308,13 @@ def analyze_front_video(video_bytes: bytes):
     landmarker.close()
     os.unlink(tmp_path)
 
-    # 정면에서는 양쪽 어깨/팔꿈치/손목 모두 필요
+    # 정면에서는 양쪽 어깨/팔꿈치/손목 + 검지(손끝 방향용) 필요
     valid = []
     for fi, frame, raw_lms in raw_frames:
         if raw_lms is None:
             continue
-        keys_to_check = [11, 12, 13, 14, 15, 16]  # 양쪽 어깨/팔꿈치/손목
+        # 11~16: 양쪽 어깨/팔꿈치/손목, 19~20: 양쪽 검지
+        keys_to_check = [11, 12, 13, 14, 15, 16]
         if all(raw_lms[k].visibility >= MIN_VISIBILITY for k in keys_to_check):
             h, w = frame.shape[:2]
             ld = {
@@ -322,6 +324,8 @@ def analyze_front_video(video_bytes: bytes):
                 "l_elbow": (raw_lms[13].x * w, raw_lms[13].y * h),
                 "r_wrist": (raw_lms[16].x * w, raw_lms[16].y * h),
                 "l_wrist": (raw_lms[15].x * w, raw_lms[15].y * h),
+                "r_index": (raw_lms[20].x * w, raw_lms[20].y * h),
+                "l_index": (raw_lms[19].x * w, raw_lms[19].y * h),
             }
             valid.append((fi, frame, ld))
 
@@ -342,11 +346,12 @@ def analyze_front_video(video_bytes: bytes):
     # 슛 팔 결정 (손목이 더 높은 쪽)
     if ld["r_wrist"][1] <= ld["l_wrist"][1]:
         shot_shoulder, shot_elbow, shot_wrist = ld["r_shoulder"], ld["r_elbow"], ld["r_wrist"]
+        shot_index = ld["r_index"]
     else:
         shot_shoulder, shot_elbow, shot_wrist = ld["l_shoulder"], ld["l_elbow"], ld["l_wrist"]
+        shot_index = ld["l_index"]
 
     # 좌우 정렬: 어깨-팔꿈치-손목의 x좌표가 수직선에서 얼마나 벗어나는지
-    # 이상적: 어깨 바로 위에 팔꿈치, 그 위에 손목 → x좌표 차이 ≈ 0
     dx_elbow = abs(shot_elbow[0] - shot_shoulder[0])
     dy_elbow = abs(shot_shoulder[1] - shot_elbow[1]) + 1e-8
     alignment = math.degrees(math.atan2(dx_elbow, dy_elbow))
@@ -357,6 +362,13 @@ def analyze_front_video(video_bytes: bytes):
     shoulder_dy = abs(ld["r_shoulder"][1] - ld["l_shoulder"][1])
     shoulder_tilt = math.degrees(math.atan2(shoulder_dy, shoulder_dx))
     result["shoulder_level_angle"] = round(shoulder_tilt, 1)
+
+    # 손끝 방향: 손목→검지 벡터가 수직에서 얼마나 틀어져 있는지
+    # 이상적: 검지가 손목 바로 위 → 0°, 옆으로 틀어지면 각도 증가
+    finger_dx = abs(shot_index[0] - shot_wrist[0])
+    finger_dy = abs(shot_wrist[1] - shot_index[1]) + 1e-8
+    finger_angle = math.degrees(math.atan2(finger_dx, finger_dy))
+    result["finger_direction_angle"] = round(finger_angle, 1)
 
     result["front_frame"] = valid[release_idx][1]
     result["front_landmarks"] = ld

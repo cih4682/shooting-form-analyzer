@@ -14,6 +14,7 @@ CRITERIA = {
         "lean": {"name": "상체 기울기", "ideal_min": 0, "ideal_max": 15},
         "alignment": {"name": "좌우 정렬", "ideal_min": 0, "ideal_max": 10},
         "shoulder_level": {"name": "어깨 수평", "ideal_min": 0, "ideal_max": 5},
+        "finger_direction": {"name": "손끝 방향", "ideal_min": 0, "ideal_max": 10},
     },
     "netball": {
         "elbow": {"name": "팔꿈치 각도", "ideal_min": 150, "ideal_max": 170},
@@ -23,6 +24,7 @@ CRITERIA = {
         "shot_direction": {"name": "슛 방향 (위로)", "ideal_min": 60, "ideal_max": 90},
         "alignment": {"name": "좌우 정렬", "ideal_min": 0, "ideal_max": 10},
         "shoulder_level": {"name": "어깨 수평", "ideal_min": 0, "ideal_max": 5},
+        "finger_direction": {"name": "손끝 방향", "ideal_min": 0, "ideal_max": 10},
     },
 }
 
@@ -267,6 +269,26 @@ def _netball_shoulder_level(angle, score):
     )
 
 
+def _finger_direction_feedback(angle, score):
+    """농구/넷볼 공통 — 손끝 방향 피드백."""
+    if score == 100:
+        return (
+            f"손끝이 골대를 향해 반듯하게 나가고 있어요! "
+            f"이 느낌 그대로 유지하면 공이 일직선으로 날아가요. (현재 {angle}°)"
+        )
+    if score >= 70:
+        return (
+            f"손끝이 살짝 옆으로 틀어져 있어요. "
+            f"공을 놓을 때 검지가 골대 정중앙을 가리키도록 의식해보세요. "
+            f"팔로우 스루 할 때 손가락이 림을 가리키면 딱 좋아요! (현재 {angle}°)"
+        )
+    return (
+        f"손끝이 많이 틀어져 있어요. 이러면 공이 좌우로 빠질 수 있어요. "
+        f"연습 방법: 슛 후 손가락이 림 정중앙을 가리킨 채로 2초간 멈춰보세요. "
+        f"이 '팔로우 스루' 자세를 기억하면서 반복 연습하면 손끝 방향이 잡혀요! (현재 {angle}°)"
+    )
+
+
 # ===========================================================================
 # 통합 함수
 # ===========================================================================
@@ -327,5 +349,10 @@ def generate_feedback(sport, **kwargs):
         sl_score = calc_score(sl, c["shoulder_level"]["ideal_min"], c["shoulder_level"]["ideal_max"])
         result["shoulder_level_score"] = sl_score
         result["shoulder_level_feedback"] = _netball_shoulder_level(sl, sl_score)
+
+        fd = kwargs.get("finger_direction_angle", 0)
+        fd_score = calc_score(fd, c["finger_direction"]["ideal_min"], c["finger_direction"]["ideal_max"])
+        result["finger_direction_score"] = fd_score
+        result["finger_direction_feedback"] = _finger_direction_feedback(fd, fd_score)
 
     return result
