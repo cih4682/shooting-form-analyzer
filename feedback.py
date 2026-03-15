@@ -12,6 +12,8 @@ CRITERIA = {
         "elbow": {"name": "팔꿈치 각도", "ideal_min": 150, "ideal_max": 170},
         "knee": {"name": "무릎 각도", "ideal_min": 90, "ideal_max": 120},
         "lean": {"name": "상체 기울기", "ideal_min": 0, "ideal_max": 15},
+        "alignment": {"name": "좌우 정렬", "ideal_min": 0, "ideal_max": 10},
+        "shoulder_level": {"name": "어깨 수평", "ideal_min": 0, "ideal_max": 5},
     },
     "netball": {
         "elbow": {"name": "팔꿈치 각도", "ideal_min": 150, "ideal_max": 170},
@@ -280,46 +282,47 @@ def generate_feedback(sport, **kwargs):
     c = CRITERIA[sport]
     result = {}
 
-    elbow = kwargs["elbow_angle"]
-    knee = kwargs["knee_angle"]
-    lean = kwargs["lean_angle"]
+    # --- 측면 영상 지표 (있을 때만) ---
+    if "elbow_angle" in kwargs:
+        elbow = kwargs["elbow_angle"]
+        knee = kwargs["knee_angle"]
+        lean = kwargs["lean_angle"]
 
-    elbow_score = calc_score(elbow, c["elbow"]["ideal_min"], c["elbow"]["ideal_max"])
-    knee_score = calc_score(knee, c["knee"]["ideal_min"], c["knee"]["ideal_max"])
-    lean_score = calc_score(lean, c["lean"]["ideal_min"], c["lean"]["ideal_max"])
+        elbow_score = calc_score(elbow, c["elbow"]["ideal_min"], c["elbow"]["ideal_max"])
+        knee_score = calc_score(knee, c["knee"]["ideal_min"], c["knee"]["ideal_max"])
+        lean_score = calc_score(lean, c["lean"]["ideal_min"], c["lean"]["ideal_max"])
 
-    result["elbow_score"] = elbow_score
-    result["knee_score"] = knee_score
-    result["lean_score"] = lean_score
+        result["elbow_score"] = elbow_score
+        result["knee_score"] = knee_score
+        result["lean_score"] = lean_score
 
-    if sport == "basketball":
-        result["elbow_feedback"] = _basketball_elbow(elbow, elbow_score)
-        result["knee_feedback"] = _basketball_knee(knee, knee_score)
-        result["lean_feedback"] = _basketball_lean(lean, lean_score)
+        if sport == "basketball":
+            result["elbow_feedback"] = _basketball_elbow(elbow, elbow_score)
+            result["knee_feedback"] = _basketball_knee(knee, knee_score)
+            result["lean_feedback"] = _basketball_lean(lean, lean_score)
+        elif sport == "netball":
+            result["elbow_feedback"] = _netball_elbow(elbow, elbow_score)
+            result["knee_feedback"] = _netball_knee(knee, knee_score)
+            result["lean_feedback"] = _netball_lean(lean, lean_score)
 
-    elif sport == "netball":
-        result["elbow_feedback"] = _netball_elbow(elbow, elbow_score)
-        result["knee_feedback"] = _netball_knee(knee, knee_score)
-        result["lean_feedback"] = _netball_lean(lean, lean_score)
+            # 슛 시작 높이
+            above = kwargs.get("shot_height_above_head", False)
+            result["shot_height_score"] = 100 if above else 30
+            result["shot_height_feedback"] = _netball_shot_height(above, result["shot_height_score"])
 
-        # 슛 시작 높이
-        above = kwargs.get("shot_height_above_head", False)
-        result["shot_height_score"] = 100 if above else 30
-        result["shot_height_feedback"] = _netball_shot_height(above, result["shot_height_score"])
+            # 슛 방향
+            sd = kwargs.get("shot_direction_angle", 90)
+            sd_score = calc_score(sd, c["shot_direction"]["ideal_min"], c["shot_direction"]["ideal_max"])
+            result["shot_direction_score"] = sd_score
+            result["shot_direction_feedback"] = _netball_shot_direction(sd, sd_score)
 
-        # 슛 방향
-        sd = kwargs.get("shot_direction_angle", 90)
-        sd_score = calc_score(sd, c["shot_direction"]["ideal_min"], c["shot_direction"]["ideal_max"])
-        result["shot_direction_score"] = sd_score
-        result["shot_direction_feedback"] = _netball_shot_direction(sd, sd_score)
-
-        # 좌우 정렬 (정면)
-        al = kwargs.get("alignment_angle", 0)
+    # --- 정면 영상 지표 (있을 때만, 농구/넷볼 공통) ---
+    if "alignment_angle" in kwargs:
+        al = kwargs["alignment_angle"]
         al_score = calc_score(al, c["alignment"]["ideal_min"], c["alignment"]["ideal_max"])
         result["alignment_score"] = al_score
         result["alignment_feedback"] = _netball_alignment(al, al_score)
 
-        # 어깨 수평 (정면)
         sl = kwargs.get("shoulder_level_angle", 0)
         sl_score = calc_score(sl, c["shoulder_level"]["ideal_min"], c["shoulder_level"]["ideal_max"])
         result["shoulder_level_score"] = sl_score

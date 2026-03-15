@@ -332,29 +332,23 @@ sport = st.radio(
 sport_key = "basketball" if sport == "Basketball" else "netball"
 
 # 가이드 안내
-if sport_key == "basketball":
-    guide_text = "슛하는 팔이 카메라 쪽을 향하도록 <b>측면</b>에서 촬영해주세요. 전신이 나오게, 2~10초 클립."
-else:
-    guide_text = "<b>측면</b> + <b>정면</b> 영상 2개를 올려주세요. 슛하는 팔이 카메라 쪽을 향하게, 전신이 나오게 촬영."
+guide_text = (
+    "<b>측면</b> 영상, <b>정면</b> 영상을 올려주세요 (둘 다 또는 하나만 가능). "
+    "슛하는 팔이 카메라 쪽을 향하게, 전신이 나오게, 2~10초 클립."
+)
 st.markdown(f'<div class="guide-box">{guide_text}</div>', unsafe_allow_html=True)
 st.markdown("<br>", unsafe_allow_html=True)
 
 # ---------------------------------------------------------------------------
-# 영상 업로드
+# 영상 업로드 (농구/넷볼 공통: 측면 + 정면, 하나만 올려도 분석 가능)
 # ---------------------------------------------------------------------------
-if sport_key == "netball":
-    up_col1, up_col2 = st.columns(2)
-    with up_col1:
-        side_video = st.file_uploader("SIDE VIEW", type=["mp4", "mov"], key="side")
-    with up_col2:
-        front_video = st.file_uploader("FRONT VIEW", type=["mp4", "mov"], key="front")
-else:
+up_col1, up_col2 = st.columns(2)
+with up_col1:
     side_video = st.file_uploader("SIDE VIEW", type=["mp4", "mov"], key="side")
-    front_video = None
+with up_col2:
+    front_video = st.file_uploader("FRONT VIEW", type=["mp4", "mov"], key="front")
 
-can_analyze = side_video is not None
-if sport_key == "netball":
-    can_analyze = can_analyze and front_video is not None
+can_analyze = (side_video is not None) or (front_video is not None)
 
 st.markdown("<br>", unsafe_allow_html=True)
 analyze_btn = st.button("ANALYZE", disabled=(not can_analyze), use_container_width=True)
@@ -363,34 +357,39 @@ analyze_btn = st.button("ANALYZE", disabled=(not can_analyze), use_container_wid
 # 분석 실행
 # ---------------------------------------------------------------------------
 if analyze_btn and can_analyze:
-    with st.spinner("Analyzing..."):
-        side_bytes = side_video.read()
-        side_result = analyze_side_video(side_bytes)
+    # --- 측면 분석 ---
+    side_result = None
+    if side_video is not None:
+        with st.spinner("Analyzing side view..."):
+            side_bytes = side_video.read()
+            side_result = analyze_side_video(side_bytes)
+        if side_result["error"]:
+            st.error(side_result["error"])
+            side_result = None
 
-    if side_result["error"]:
-        st.error(side_result["error"])
-    else:
-        front_result = None
-        if sport_key == "netball" and front_video is not None:
-            with st.spinner("Analyzing front view..."):
-                front_bytes = front_video.read()
-                front_result = analyze_front_video(front_bytes)
-            if front_result["error"]:
-                st.error(front_result["error"])
-                front_result = None
+    # --- 정면 분석 ---
+    front_result = None
+    if front_video is not None:
+        with st.spinner("Analyzing front view..."):
+            front_bytes = front_video.read()
+            front_result = analyze_front_video(front_bytes)
+        if front_result["error"]:
+            st.error(front_result["error"])
+            front_result = None
 
+    if side_result or front_result:
         # 피드백 생성
-        fb_kwargs = {
-            "elbow_angle": side_result["elbow_angle"],
-            "knee_angle": side_result["knee_angle"],
-            "lean_angle": side_result["lean_angle"],
-        }
-        if sport_key == "netball":
-            fb_kwargs["shot_height_above_head"] = side_result["shot_height_above_head"]
-            fb_kwargs["shot_direction_angle"] = side_result["shot_direction_angle"]
-            if front_result:
-                fb_kwargs["alignment_angle"] = front_result["alignment_angle"]
-                fb_kwargs["shoulder_level_angle"] = front_result["shoulder_level_angle"]
+        fb_kwargs = {}
+        if side_result:
+            fb_kwargs["elbow_angle"] = side_result["elbow_angle"]
+            fb_kwargs["knee_angle"] = side_result["knee_angle"]
+            fb_kwargs["lean_angle"] = side_result["lean_angle"]
+            if sport_key == "netball":
+                fb_kwargs["shot_height_above_head"] = side_result["shot_height_above_head"]
+                fb_kwargs["shot_direction_angle"] = side_result["shot_direction_angle"]
+        if front_result:
+            fb_kwargs["alignment_angle"] = front_result["alignment_angle"]
+            fb_kwargs["shoulder_level_angle"] = front_result["shoulder_level_angle"]
 
         fb = generate_feedback(sport_key, **fb_kwargs)
 
@@ -399,11 +398,13 @@ if analyze_btn and can_analyze:
         # =================================================================
         # 총점
         # =================================================================
-        all_scores = [fb["elbow_score"], fb["knee_score"], fb["lean_score"]]
-        if sport_key == "netball":
-            all_scores += [fb["shot_height_score"], fb["shot_direction_score"]]
-            if front_result:
-                all_scores += [fb["alignment_score"], fb["shoulder_level_score"]]
+        all_scores = []
+        if side_result:
+            all_scores += [fb["elbow_score"], fb["knee_score"], fb["lean_score"]]
+            if sport_key == "netball":
+                all_scores += [fb["shot_height_score"], fb["shot_direction_score"]]
+        if front_result:
+            all_scores += [fb["alignment_score"], fb["shoulder_level_score"]]
 
         render_overall(all_scores)
         st.markdown('<div class="section-divider"></div>', unsafe_allow_html=True)
@@ -411,35 +412,36 @@ if analyze_btn and can_analyze:
         # =================================================================
         # 분석 프레임
         # =================================================================
-        if sport_key == "netball" and front_result and front_result.get("front_frame") is not None:
-            f_col1, f_col2, f_col3 = st.columns(3)
-        else:
-            f_col1, f_col2 = st.columns(2)
-            f_col3 = None
+        frame_cols_count = (2 if side_result else 0) + (1 if front_result else 0)
+        frame_cols = st.columns(max(frame_cols_count, 1))
+        col_idx = 0
 
-        with f_col1:
-            st.markdown('<div class="frame-container"><div class="frame-label">Release</div></div>', unsafe_allow_html=True)
-            release_img = draw_skeleton(
-                side_result["release_frame"],
-                side_result["release_landmarks"],
-                angles_text=[
-                    f"Elbow: {side_result['elbow_angle']}",
-                    f"Lean: {side_result['lean_angle']}",
-                ],
-            )
-            st.image(release_img, use_container_width=True)
+        if side_result:
+            with frame_cols[col_idx]:
+                st.markdown('<div class="frame-container"><div class="frame-label">Release</div></div>', unsafe_allow_html=True)
+                release_img = draw_skeleton(
+                    side_result["release_frame"],
+                    side_result["release_landmarks"],
+                    angles_text=[
+                        f"Elbow: {side_result['elbow_angle']}",
+                        f"Lean: {side_result['lean_angle']}",
+                    ],
+                )
+                st.image(release_img, use_container_width=True)
+            col_idx += 1
 
-        with f_col2:
-            st.markdown('<div class="frame-container"><div class="frame-label">Setup</div></div>', unsafe_allow_html=True)
-            setup_img = draw_skeleton(
-                side_result["setup_frame"],
-                side_result["setup_landmarks"],
-                angles_text=[f"Knee: {side_result['knee_angle']}"],
-            )
-            st.image(setup_img, use_container_width=True)
+            with frame_cols[col_idx]:
+                st.markdown('<div class="frame-container"><div class="frame-label">Setup</div></div>', unsafe_allow_html=True)
+                setup_img = draw_skeleton(
+                    side_result["setup_frame"],
+                    side_result["setup_landmarks"],
+                    angles_text=[f"Knee: {side_result['knee_angle']}"],
+                )
+                st.image(setup_img, use_container_width=True)
+            col_idx += 1
 
-        if f_col3 and front_result:
-            with f_col3:
+        if front_result:
+            with frame_cols[col_idx]:
                 st.markdown('<div class="frame-container"><div class="frame-label">Front</div></div>', unsafe_allow_html=True)
                 front_img = draw_front_skeleton(
                     front_result["front_frame"],
@@ -456,38 +458,39 @@ if analyze_btn and can_analyze:
         # =================================================================
         # 점수 카드
         # =================================================================
-        cols = st.columns(3)
-        with cols[0]: render_score_card("ELBOW", fb["elbow_score"])
-        with cols[1]: render_score_card("KNEE", fb["knee_score"])
-        with cols[2]: render_score_card("POSTURE", fb["lean_score"])
+        if side_result:
+            cols = st.columns(3)
+            with cols[0]: render_score_card("ELBOW", fb["elbow_score"])
+            with cols[1]: render_score_card("KNEE", fb["knee_score"])
+            with cols[2]: render_score_card("POSTURE", fb["lean_score"])
 
-        if sport_key == "netball":
+            if sport_key == "netball":
+                st.markdown("<br>", unsafe_allow_html=True)
+                extra_cols = st.columns(2)
+                with extra_cols[0]: render_score_card("SHOT HEIGHT", fb["shot_height_score"])
+                with extra_cols[1]: render_score_card("DIRECTION", fb["shot_direction_score"])
+
+        if front_result:
             st.markdown("<br>", unsafe_allow_html=True)
-            n_extra = 2
-            if front_result:
-                n_extra = 4
-            extra_cols = st.columns(n_extra)
-            with extra_cols[0]: render_score_card("SHOT HEIGHT", fb["shot_height_score"])
-            with extra_cols[1]: render_score_card("DIRECTION", fb["shot_direction_score"])
-            if front_result:
-                with extra_cols[2]: render_score_card("ALIGNMENT", fb["alignment_score"])
-                with extra_cols[3]: render_score_card("SHOULDERS", fb["shoulder_level_score"])
+            front_cols = st.columns(2)
+            with front_cols[0]: render_score_card("ALIGNMENT", fb["alignment_score"])
+            with front_cols[1]: render_score_card("SHOULDERS", fb["shoulder_level_score"])
 
         st.markdown('<div class="section-divider"></div>', unsafe_allow_html=True)
 
         # =================================================================
         # 피드백
         # =================================================================
-        render_feedback("ELBOW", fb["elbow_feedback"], fb["elbow_score"])
-        render_feedback("KNEE", fb["knee_feedback"], fb["knee_score"])
-        render_feedback("POSTURE", fb["lean_feedback"], fb["lean_score"])
-
-        if sport_key == "netball":
-            render_feedback("SHOT HEIGHT", fb["shot_height_feedback"], fb["shot_height_score"])
-            render_feedback("DIRECTION", fb["shot_direction_feedback"], fb["shot_direction_score"])
-            if front_result:
-                render_feedback("ALIGNMENT", fb["alignment_feedback"], fb["alignment_score"])
-                render_feedback("SHOULDERS", fb["shoulder_level_feedback"], fb["shoulder_level_score"])
+        if side_result:
+            render_feedback("ELBOW", fb["elbow_feedback"], fb["elbow_score"])
+            render_feedback("KNEE", fb["knee_feedback"], fb["knee_score"])
+            render_feedback("POSTURE", fb["lean_feedback"], fb["lean_score"])
+            if sport_key == "netball":
+                render_feedback("SHOT HEIGHT", fb["shot_height_feedback"], fb["shot_height_score"])
+                render_feedback("DIRECTION", fb["shot_direction_feedback"], fb["shot_direction_score"])
+        if front_result:
+            render_feedback("ALIGNMENT", fb["alignment_feedback"], fb["alignment_score"])
+            render_feedback("SHOULDERS", fb["shoulder_level_feedback"], fb["shoulder_level_score"])
 
 # ---------------------------------------------------------------------------
 # 하단
