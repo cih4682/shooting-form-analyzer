@@ -27,6 +27,14 @@ html, body, [class*="css"] {
     font-family: 'Inter', sans-serif;
 }
 
+/* Streamlit 하단 바, 메뉴, GitHub 아이콘 숨기기 */
+footer {visibility: hidden;}
+#MainMenu {visibility: hidden;}
+header {visibility: hidden;}
+div[data-testid="stStatusWidget"] {visibility: hidden;}
+.viewerBadge_container__r5tak {display: none !important;}
+.stDeployButton {display: none !important;}
+
 /* 헤더 영역 */
 .hero-title {
     font-size: 2.8rem;
