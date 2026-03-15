@@ -640,7 +640,7 @@ if analyze_btn and can_analyze:
 st.markdown('<div class="section-divider"></div>', unsafe_allow_html=True)
 st.markdown(
     '<div class="privacy-note">'
-    'PRIVACY<br>업로드된 영상은 분석 후 즉시 삭제됩니다.<br>외부 전송 및 결과는 저장되지 않습니다.'
+    'Made by 세종넷볼협회'
     '</div>',
     unsafe_allow_html=True,
 )
