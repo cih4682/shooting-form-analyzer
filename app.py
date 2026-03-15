@@ -20,14 +20,6 @@ def _init_supabase():
         return create_client(url, key)
     return None
 
-def _init_supabase_admin():
-    url = st.secrets.get("supabase", {}).get("url", "")
-    key = st.secrets.get("supabase", {}).get("service_role_key", "")
-    if url and key:
-        from supabase import create_client
-        return create_client(url, key)
-    return None
-
 def _check_auth():
     """이메일+비밀번호 로그인/회원가입"""
     supabase = _init_supabase()
@@ -82,20 +74,9 @@ def _check_auth():
                     st.error("비밀번호는 6자 이상이어야 합니다.")
                 else:
                     try:
-                        res = supabase.auth.sign_up({
-                            "email": new_email, "password": new_pw,
+                        supabase.auth.sign_up({
+                            "email": new_email, "password": new_pw
                         })
-                        # 이메일 인증 우회: admin API로 즉시 확인 처리
-                        if res.user:
-                            try:
-                                admin_sb = _init_supabase_admin()
-                                if admin_sb:
-                                    admin_sb.auth.admin.update_user_by_id(
-                                        res.user.id,
-                                        {"email_confirm": True}
-                                    )
-                            except Exception:
-                                pass
                         # 승인 대기 목록에 추가
                         try:
                             supabase.table("pending_users").insert({"email": new_email}).execute()
