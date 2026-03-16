@@ -5,6 +5,7 @@ analyzer.py — 영상에서 관절 좌표 추출 + 각도 계산 (메모리 최
 넷볼: 측면 영상 + 정면 영상 → 위 3개 + 슛높이, 슛방향, 좌우정렬, 어깨수평
 """
 
+import gc
 import math
 import os
 import tempfile
@@ -153,6 +154,7 @@ def analyze_side_video(video_bytes: bytes):
     cap.release()
     landmarker.close()
     os.unlink(tmp_path)
+    gc.collect()
 
     if len(lm_data) < 3:
         result["error"] = "영상에서 자세를 감지할 수 없습니다. 측면에서 한 사람만 촬영된 영상을 올려주세요."
@@ -268,6 +270,10 @@ def analyze_side_video(video_bytes: bytes):
         direction_angle = math.degrees(math.atan2(dy, abs(dx)))
         result["shot_direction_angle"] = round(max(0, min(90, direction_angle)), 1)
 
+    # 메모리 정리
+    del lm_data, valid
+    gc.collect()
+
     return result
 
 
@@ -326,6 +332,7 @@ def analyze_front_video(video_bytes: bytes):
     cap.release()
     landmarker.close()
     os.unlink(tmp_path)
+    gc.collect()
 
     if len(lm_data) < 2:
         result["error"] = "정면 영상에서 자세를 감지할 수 없습니다. 정면에서 한 사람만 촬영된 영상을 올려주세요."
@@ -361,6 +368,10 @@ def analyze_front_video(video_bytes: bytes):
     # 필요한 프레임만 읽기
     result["front_frame"] = _read_frame_at(video_bytes, release_frame_idx)
     result["front_landmarks"] = ld
+
+    # 메모리 정리
+    del lm_data
+    gc.collect()
 
     return result
 

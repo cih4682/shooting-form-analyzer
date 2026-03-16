@@ -1,4 +1,5 @@
 import os
+import gc
 import streamlit as st
 from analyzer import (
     analyze_side_video, analyze_front_video,
@@ -767,6 +768,8 @@ if analyze_btn and can_analyze:
         with st.spinner("Analyzing side view..."):
             side_bytes = side_video.read()
             side_result = analyze_side_video(side_bytes)
+            del side_bytes  # 메모리 즉시 해제
+            gc.collect()
         if side_result["error"]:
             st.markdown(
                 f'<div style="background:#2D1117;border:1px solid #FF4757;border-radius:8px;'
@@ -782,6 +785,8 @@ if analyze_btn and can_analyze:
         with st.spinner("Analyzing front view..."):
             front_bytes = front_video.read()
             front_result = analyze_front_video(front_bytes)
+            del front_bytes  # 메모리 즉시 해제
+            gc.collect()
         if front_result["error"]:
             st.markdown(
                 f'<div style="background:#2D1117;border:1px solid #FF4757;border-radius:8px;'
