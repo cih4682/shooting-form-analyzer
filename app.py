@@ -33,11 +33,40 @@ def _init_supabase():
         return create_client(url, key)
     return None
 
+def _is_class_mode():
+    """Supabase에서 수업 모드 상태 확인"""
+    try:
+        supabase = _init_supabase()
+        if not supabase:
+            return False
+        res = supabase.table("app_settings").select("value").eq("key", "class_mode").execute()
+        if res.data and len(res.data) > 0:
+            return res.data[0]["value"] == "on"
+    except:
+        pass
+    return False
+
+def _toggle_class_mode(on: bool):
+    """수업 모드 켜기/끄기"""
+    try:
+        supabase = _init_supabase()
+        if supabase:
+            supabase.table("app_settings").update({"value": "on" if on else "off"}).eq("key", "class_mode").execute()
+    except:
+        pass
+
 def _check_auth():
-    """이메일+비밀번호 로그인/회원가입 + 쿠키 기반 세션 복원"""
+    """이메일+비밀번호 로그인/회원가입"""
     supabase = _init_supabase()
     if not supabase:
         return  # secrets 없으면 인증 없이 사용 (로컬 개발용)
+
+    # 수업 모드면 로그인 없이 바로 사용
+    if _is_class_mode() and "user_email" not in st.session_state:
+        st.session_state["user_email"] = "class_mode@student"
+        st.session_state["user_name"] = "학생"
+        st.session_state["user_role"] = "user"
+        return
 
     if "user_email" in st.session_state:
         return
@@ -216,6 +245,21 @@ def _admin_page():
     """.replace("{email}", st.session_state.get("user_email", ""))
        .replace("{role_label}", "최고관리자" if role == "superadmin" else "관리자"),
     unsafe_allow_html=True)
+
+    # 수업 모드 토글
+    st.markdown("---")
+    class_mode_on = _is_class_mode()
+    if class_mode_on:
+        st.success("🟢 수업 모드 ON — 학생들이 로그인 없이 사용 가능합니다")
+        if st.button("수업 모드 끄기", key="class_mode_off"):
+            _toggle_class_mode(False)
+            st.rerun()
+    else:
+        st.info("⚪ 수업 모드 OFF — 로그인 필요")
+        if st.button("수업 모드 켜기", key="class_mode_on"):
+            _toggle_class_mode(True)
+            st.rerun()
+    st.markdown("---")
 
     # 돌아가기 버튼
     if st.button("← 돌아가기", key="back_to_analyzer"):
