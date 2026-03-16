@@ -45,12 +45,19 @@ def _check_auth():
     if "user_email" in st.session_state:
         return
 
-    # 쿠키에서 로그인 정보 복원
-    saved_email = cookie_controller.get("auth_email")
-    if saved_email:
-        st.session_state["user_email"] = saved_email
-        st.session_state["user_name"] = saved_email.split("@")[0]
-        return
+    # 쿠키에서 로그인 정보 복원 (타이밍 대기)
+    cookies = cookie_controller.getAll()
+    if cookies and "auth_email" in cookies:
+        st.session_state["user_email"] = cookies["auth_email"]
+        st.session_state["user_name"] = cookies["auth_email"].split("@")[0]
+        st.rerun()
+    elif cookies is None:
+        # 쿠키 컴포넌트가 아직 로드되지 않음 — 1회만 재시도
+        if not st.session_state.get("_cookie_retry"):
+            st.session_state["_cookie_retry"] = True
+            import time
+            time.sleep(0.5)
+            st.rerun()
 
     import base64
     _logo_path = os.path.join(os.path.dirname(__file__), "assets", "main shoot.png")
