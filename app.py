@@ -189,9 +189,6 @@ def _show_menu():
     role = st.session_state.get("user_role", "")
     is_admin = role in ("admin", "superadmin")
 
-    if st.session_state.get("page", "analyzer") == "admin" and is_admin:
-        return "admin"
-
     # 좌측 상단 ☰ — 흰색 깔끔한 네모 스타일
     st.markdown("""<style>
     div[data-testid="stButton"] > button[kind="secondary"]:first-child {
@@ -207,156 +204,19 @@ def _show_menu():
             st.session_state["menu_open"] = not st.session_state.get("menu_open", False)
 
     if st.session_state.get("menu_open", False):
-        items = ["분석기"]
-        if is_admin:
-            items.append("관리자 모드")
-        items.append("로그아웃")
+        items = ["분석기", "로그아웃"]
         choice = st.radio(
             "nav", items,
             label_visibility="collapsed",
             key="nav_radio",
             horizontal=True,
         )
-        if choice == "관리자 모드":
-            st.session_state["menu_open"] = False
-            st.session_state["page"] = "admin"
-            st.rerun()
-        elif choice == "로그아웃":
-            # session_state 초기화
+        if choice == "로그아웃":
             for key in list(st.session_state.keys()):
                 del st.session_state[key]
             st.rerun()
 
     return "analyzer"
-
-def _admin_page():
-    """관리자 페이지 — 전체 화면"""
-    role = st.session_state.get("user_role", "")
-    supabase = _init_supabase()
-    if not supabase:
-        return
-
-    st.markdown("""
-    <div style="text-align:center; margin-bottom:32px;">
-        <div style="font-size:1.6rem; font-weight:800;
-             background: linear-gradient(135deg, #00D4AA, #00A3FF);
-             -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
-             ⚙️ 관리자 모드</div>
-        <div style="color:#8888A0; font-size:0.9rem; margin-top:4px;">
-            {email} ({role_label})</div>
-    </div>
-    """.replace("{email}", st.session_state.get("user_email", ""))
-       .replace("{role_label}", "최고관리자" if role == "superadmin" else "관리자"),
-    unsafe_allow_html=True)
-
-    # 수업 모드 토글
-    st.markdown("---")
-    class_mode_on = _is_class_mode()
-    if class_mode_on:
-        st.success("🟢 수업 모드 ON — 학생들이 로그인 없이 사용 가능합니다")
-        if st.button("수업 모드 끄기", key="class_mode_off"):
-            _toggle_class_mode(False)
-            st.rerun()
-    else:
-        st.info("⚪ 수업 모드 OFF — 로그인 필요")
-        if st.button("수업 모드 켜기", key="class_mode_on"):
-            _toggle_class_mode(True)
-            st.rerun()
-    st.markdown("---")
-
-    # 돌아가기 버튼
-    if st.button("← 돌아가기", key="back_to_analyzer"):
-        st.session_state["page"] = "analyzer"
-        st.rerun()
-
-    st.markdown("---")
-
-    # 데이터 로드
-    try:
-        approved_res = supabase.table("approved_users").select("email, role, created_at").execute()
-        approved_list = approved_res.data or []
-        approved_map = {r["email"]: r["role"] for r in approved_list}
-    except Exception:
-        approved_list = []
-        approved_map = {}
-
-    try:
-        pending_res = supabase.table("pending_users").select("email, created_at").execute()
-        pending_users = [r for r in (pending_res.data or []) if r["email"] not in approved_map]
-    except Exception:
-        pending_users = []
-
-    # 3개 섹션
-    tab_pending, tab_approved, tab_admin = st.tabs(["🕐 승인 대기", "✅ 승인된 사용자", "👑 관리자"])
-
-    # --- 승인 대기 ---
-    with tab_pending:
-        if pending_users:
-            for pu in pending_users:
-                col1, col2, col3 = st.columns([4, 1, 1])
-                col1.markdown(f"**{pu['email']}**")
-                if col2.button("승인", key=f"approve_{pu['email']}", type="primary"):
-                    try:
-                        supabase.table("approved_users").insert({"email": pu["email"], "role": "user"}).execute()
-                        supabase.table("pending_users").delete().eq("email", pu["email"]).execute()
-                        st.rerun()
-                    except Exception:
-                        st.error("승인 실패")
-                if col3.button("삭제", key=f"del_p_{pu['email']}"):
-                    try:
-                        supabase.table("pending_users").delete().eq("email", pu["email"]).execute()
-                        st.rerun()
-                    except Exception:
-                        st.error("삭제 실패")
-        else:
-            st.info("대기 중인 사용자가 없습니다.")
-
-    # --- 승인된 사용자 ---
-    with tab_approved:
-        users = [r for r in approved_list if r.get("role") == "user"]
-        if users:
-            for u in users:
-                col1, col2, col3 = st.columns([4, 1, 1])
-                col1.markdown(f"**{u['email']}**")
-                if role == "superadmin":
-                    if col2.button("관리자 지정", key=f"promote_{u['email']}"):
-                        try:
-                            supabase.table("approved_users").update({"role": "admin"}).eq("email", u["email"]).execute()
-                            st.rerun()
-                        except Exception:
-                            st.error("변경 실패")
-                if col3.button("삭제", key=f"del_u_{u['email']}"):
-                    try:
-                        supabase.table("approved_users").delete().eq("email", u["email"]).execute()
-                        st.rerun()
-                    except Exception:
-                        st.error("삭제 실패")
-        else:
-            st.info("승인된 일반 사용자가 없습니다.")
-
-    # --- 관리자 목록 (최고관리자만) ---
-    with tab_admin:
-        if role == "superadmin":
-            admins = [r for r in approved_list if r.get("role") == "admin"]
-            if admins:
-                for a in admins:
-                    col1, col2 = st.columns([4, 1])
-                    col1.markdown(f"**{a['email']}**")
-                    if col2.button("관리자 해제", key=f"demote_{a['email']}"):
-                        try:
-                            supabase.table("approved_users").update({"role": "user"}).eq("email", a["email"]).execute()
-                            st.rerun()
-                        except Exception:
-                            st.error("변경 실패")
-            else:
-                st.info("지정된 관리자가 없습니다.")
-
-            st.markdown("---")
-            st.caption("최고관리자: " + st.session_state.get("user_email", ""))
-        else:
-            st.warning("최고관리자만 관리자를 관리할 수 있습니다.")
-
-    st.stop()
 
 # ---------------------------------------------------------------------------
 # 페이지 설정
@@ -372,9 +232,7 @@ st.set_page_config(
 # ---------------------------------------------------------------------------
 _check_auth()
 _check_approved()
-_current_page = _show_menu()
-if _current_page == "admin":
-    _admin_page()
+_show_menu()
 
 # ---------------------------------------------------------------------------
 # 커스텀 CSS
