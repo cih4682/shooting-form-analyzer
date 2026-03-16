@@ -42,13 +42,18 @@ def _check_auth():
     if "user_email" in st.session_state:
         return
 
-    st.markdown("""
+    import base64
+    _logo_path = os.path.join(os.path.dirname(__file__), "assets", "main shoot.png")
+    if os.path.exists(_logo_path):
+        with open(_logo_path, "rb") as _f:
+            _logo_b64 = base64.b64encode(_f.read()).decode()
+        _logo_html = f'<img src="data:image/png;base64,{_logo_b64}" style="width:180px; margin-bottom:12px;">'
+    else:
+        _logo_html = '<div style="font-size:3rem; margin-bottom:16px;">🏀</div>'
+
+    st.markdown(f"""
     <div style="text-align:center; padding: 40px 20px 10px;">
-        <div style="font-size:3rem; margin-bottom:16px;">🏀</div>
-        <div style="font-size:1.8rem; font-weight:800;
-             background: linear-gradient(135deg, #00D4AA, #00A3FF);
-             -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-             margin-bottom:8px;">Shot Form Analyzer</div>
+        {_logo_html}
         <div style="color:#8888A0; margin-bottom:24px;">AI 기반 슛 자세 분석</div>
     </div>
     """, unsafe_allow_html=True)
@@ -720,7 +725,14 @@ def render_overall(scores):
 # ---------------------------------------------------------------------------
 # 헤더
 # ---------------------------------------------------------------------------
-st.markdown('<div class="hero-title">Shot Form Analyzer</div>', unsafe_allow_html=True)
+import base64 as _b64
+_main_logo_path = os.path.join(os.path.dirname(__file__), "assets", "main shoot.png")
+if os.path.exists(_main_logo_path):
+    with open(_main_logo_path, "rb") as _mf:
+        _main_logo_b64 = _b64.b64encode(_mf.read()).decode()
+    st.markdown(f'<div style="text-align:center;padding-top:20px;"><img src="data:image/png;base64,{_main_logo_b64}" style="width:220px;"></div>', unsafe_allow_html=True)
+else:
+    st.markdown('<div class="hero-title">Shot Form Analyzer</div>', unsafe_allow_html=True)
 st.markdown('<div class="hero-subtitle">AI 기반 슛 자세 분석 — 프로처럼 쏴보세요</div>', unsafe_allow_html=True)
 
 # ---------------------------------------------------------------------------
