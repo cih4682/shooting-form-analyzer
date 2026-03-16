@@ -1,6 +1,7 @@
 import os
 import gc
 import streamlit as st
+from streamlit_cookies_controller import CookieController
 from analyzer import (
     analyze_side_video, analyze_front_video,
     draw_skeleton, draw_front_skeleton,
@@ -8,6 +9,8 @@ from analyzer import (
     draw_front_comparison, draw_shot_height_comparison, draw_shot_direction_comparison,
 )
 from feedback import generate_feedback, CRITERIA
+
+cookie_controller = CookieController()
 
 # ---------------------------------------------------------------------------
 # Supabase 이메일 인증 + 승인 관리
@@ -34,12 +37,19 @@ def _init_supabase():
     return None
 
 def _check_auth():
-    """이메일+비밀번호 로그인/회원가입"""
+    """이메일+비밀번호 로그인/회원가입 + 쿠키 기반 세션 복원"""
     supabase = _init_supabase()
     if not supabase:
         return  # secrets 없으면 인증 없이 사용 (로컬 개발용)
 
     if "user_email" in st.session_state:
+        return
+
+    # 쿠키에서 로그인 정보 복원
+    saved_email = cookie_controller.get("auth_email")
+    if saved_email:
+        st.session_state["user_email"] = saved_email
+        st.session_state["user_name"] = saved_email.split("@")[0]
         return
 
     import base64
@@ -75,6 +85,8 @@ def _check_auth():
                         })
                         st.session_state["user_email"] = res.user.email
                         st.session_state["user_name"] = res.user.email.split("@")[0]
+                        # 쿠키에 로그인 정보 저장 (24시간)
+                        cookie_controller.set("auth_email", res.user.email, max_age=86400)
                         st.rerun()
                     except Exception as e:
                         st.error("로그인 실패: 이메일 또는 비밀번호를 확인하세요.")
@@ -190,6 +202,9 @@ def _show_menu():
             st.session_state["page"] = "admin"
             st.rerun()
         elif choice == "로그아웃":
+            # 쿠키 삭제
+            cookie_controller.remove("auth_email")
+            # session_state 초기화
             for key in list(st.session_state.keys()):
                 del st.session_state[key]
             st.rerun()
@@ -774,6 +789,12 @@ analyze_btn = st.button("ANALYZE", disabled=(not can_analyze), use_container_wid
 # 분석 실행
 # ---------------------------------------------------------------------------
 if analyze_btn and can_analyze:
+    # --- 이전 분석 결과 메모리 정리 ---
+    for _old_key in ["_prev_side_result", "_prev_front_result"]:
+        if _old_key in st.session_state:
+            del st.session_state[_old_key]
+    gc.collect()
+
     # --- 측면 분석 ---
     side_result = None
     if side_video is not None:

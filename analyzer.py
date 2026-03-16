@@ -88,17 +88,16 @@ def _create_landmarker():
     return vision.PoseLandmarker.create_from_options(options)
 
 
-def _read_frame_at(video_bytes, frame_idx):
-    """특정 프레임만 읽어 반환 (메모리 절약)."""
-    tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4")
-    tmp.write(video_bytes)
-    tmp.close()
-    cap = cv2.VideoCapture(tmp.name)
-    cap.set(cv2.CAP_PROP_POS_FRAMES, frame_idx)
-    ret, frame = cap.read()
+def _read_frames_at(tmp_path, frame_indices):
+    """임시파일 1개에서 여러 프레임을 한 번에 읽기 (메모리 절약)."""
+    cap = cv2.VideoCapture(tmp_path)
+    frames = {}
+    for idx in sorted(set(frame_indices)):
+        cap.set(cv2.CAP_PROP_POS_FRAMES, idx)
+        ret, frame = cap.read()
+        frames[idx] = frame if ret else None
     cap.release()
-    os.unlink(tmp.name)
-    return frame if ret else None
+    return frames
 
 
 # ---------------------------------------------------------------------------
@@ -153,10 +152,10 @@ def analyze_side_video(video_bytes: bytes):
 
     cap.release()
     landmarker.close()
-    os.unlink(tmp_path)
     gc.collect()
 
     if len(lm_data) < 3:
+        os.unlink(tmp_path)
         result["error"] = "영상에서 자세를 감지할 수 없습니다. 측면에서 한 사람만 촬영된 영상을 올려주세요."
         return result
 
@@ -230,9 +229,12 @@ def analyze_side_video(video_bytes: bytes):
     release_frame_idx = valid[release_idx][0]
     setup_frame_idx = valid[setup_idx][0]
 
-    # --- 5단계: 필요한 프레임만 읽기 ---
-    result["release_frame"] = _read_frame_at(video_bytes, release_frame_idx)
-    result["setup_frame"] = _read_frame_at(video_bytes, setup_frame_idx)
+    # --- 5단계: 필요한 프레임만 읽기 (임시파일 재사용) ---
+    needed_frames = _read_frames_at(tmp_path, [release_frame_idx, setup_frame_idx])
+    os.unlink(tmp_path)
+    result["release_frame"] = needed_frames.get(release_frame_idx)
+    result["setup_frame"] = needed_frames.get(setup_frame_idx)
+    del needed_frames
 
     result["elbow_angle"] = round(_calc_angle(release_ld["shoulder"], release_ld["elbow"], release_ld["wrist"]), 1)
     result["knee_angle"] = round(_calc_angle(setup_ld["hip"], setup_ld["knee"], setup_ld["ankle"]), 1)
@@ -331,10 +333,10 @@ def analyze_front_video(video_bytes: bytes):
 
     cap.release()
     landmarker.close()
-    os.unlink(tmp_path)
     gc.collect()
 
     if len(lm_data) < 2:
+        os.unlink(tmp_path)
         result["error"] = "정면 영상에서 자세를 감지할 수 없습니다. 정면에서 한 사람만 촬영된 영상을 올려주세요."
         return result
 
@@ -365,12 +367,14 @@ def analyze_front_video(video_bytes: bytes):
     finger_dy = abs(shot_wrist[1] - shot_index[1]) + 1e-8
     result["finger_direction_angle"] = round(math.degrees(math.atan2(finger_dx, finger_dy)), 1)
 
-    # 필요한 프레임만 읽기
-    result["front_frame"] = _read_frame_at(video_bytes, release_frame_idx)
+    # 필요한 프레임만 읽기 (임시파일 재사용)
+    needed = _read_frames_at(tmp_path, [release_frame_idx])
+    os.unlink(tmp_path)
+    result["front_frame"] = needed.get(release_frame_idx)
     result["front_landmarks"] = ld
 
     # 메모리 정리
-    del lm_data
+    del lm_data, needed
     gc.collect()
 
     return result
