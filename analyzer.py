@@ -484,6 +484,9 @@ def draw_shot_direction_comparison(frame, landmarks, direction_angle):
     h, w = img.shape[:2]
     line_len = int(min(w, h) * 0.2)
 
+    # 슛 방향 감지: 손목이 어깨보다 왼쪽이면 -1, 오른쪽이면 +1
+    x_dir = -1 if wrist[0] < shoulder[0] else 1
+
     # --- 90° 수직선 (회색 — 기준) ---
     vert_end = (sh_pt[0], sh_pt[1] - line_len)
     cv2.line(img, sh_pt, vert_end, (100, 100, 100), 1, cv2.LINE_AA)
@@ -492,9 +495,9 @@ def draw_shot_direction_comparison(frame, landmarks, direction_angle):
 
     # --- 45° 기준선 (회색 — 너무 앞) ---
     rad_45 = math.radians(45)
-    end_45 = (int(sh_pt[0] + line_len * math.cos(rad_45)), int(sh_pt[1] - line_len * math.sin(rad_45)))
+    end_45 = (int(sh_pt[0] + x_dir * line_len * math.cos(rad_45)), int(sh_pt[1] - line_len * math.sin(rad_45)))
     cv2.line(img, sh_pt, end_45, (100, 100, 100), 1, cv2.LINE_AA)
-    cv2.putText(img, "45", (end_45[0] + 5, end_45[1] - 5),
+    cv2.putText(img, "45", (end_45[0] + x_dir * 5, end_45[1] - 5),
                 cv2.FONT_HERSHEY_SIMPLEX, 0.5, (100, 100, 100), 1)
 
     # --- 이상적 범위 (초록 부채꼴: 65°~80°) ---
@@ -502,20 +505,20 @@ def draw_shot_direction_comparison(frame, landmarks, direction_angle):
     pts = [sh_pt]
     for deg in range(65, 81):
         r = math.radians(deg)
-        pts.append((int(sh_pt[0] + line_len * math.cos(r)), int(sh_pt[1] - line_len * math.sin(r))))
+        pts.append((int(sh_pt[0] + x_dir * line_len * math.cos(r)), int(sh_pt[1] - line_len * math.sin(r))))
     pts.append(sh_pt)
     cv2.fillPoly(overlay, [np.array(pts)], (0, 220, 100))
     cv2.addWeighted(overlay, 0.2, img, 0.8, 0, img)
 
     rad_65 = math.radians(65)
     rad_80 = math.radians(80)
-    end_65 = (int(sh_pt[0] + line_len * math.cos(rad_65)), int(sh_pt[1] - line_len * math.sin(rad_65)))
-    end_80 = (int(sh_pt[0] + line_len * math.cos(rad_80)), int(sh_pt[1] - line_len * math.sin(rad_80)))
+    end_65 = (int(sh_pt[0] + x_dir * line_len * math.cos(rad_65)), int(sh_pt[1] - line_len * math.sin(rad_65)))
+    end_80 = (int(sh_pt[0] + x_dir * line_len * math.cos(rad_80)), int(sh_pt[1] - line_len * math.sin(rad_80)))
     cv2.line(img, sh_pt, end_65, (0, 220, 100), 2, cv2.LINE_AA)
     cv2.line(img, sh_pt, end_80, (0, 220, 100), 2, cv2.LINE_AA)
-    cv2.putText(img, "65", (end_65[0] + 5, end_65[1] - 5),
+    cv2.putText(img, "65", (end_65[0] + x_dir * 5, end_65[1] - 5),
                 cv2.FONT_HERSHEY_SIMPLEX, 0.55, (0, 220, 100), 2)
-    cv2.putText(img, "80", (end_80[0] - 30, end_80[1] - 10),
+    cv2.putText(img, "80", (end_80[0] - x_dir * 30, end_80[1] - 10),
                 cv2.FONT_HERSHEY_SIMPLEX, 0.55, (0, 220, 100), 2)
 
     # --- 실제 방향: 어깨→손목 (빨강 화살표) ---
