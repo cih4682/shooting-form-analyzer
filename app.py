@@ -72,11 +72,11 @@ def _check_auth():
         return
 
     import base64
-    _logo_path = os.path.join(os.path.dirname(__file__), "assets", "main shoot.png")
+    _logo_path = os.path.join(os.path.dirname(__file__), "assets", "shoot.png")
     if os.path.exists(_logo_path):
         with open(_logo_path, "rb") as _f:
             _logo_b64 = base64.b64encode(_f.read()).decode()
-        _logo_html = f'<img src="data:image/png;base64,{_logo_b64}" style="width:180px; margin-bottom:12px;">'
+        _logo_html = f'<img src="data:image/png;base64,{_logo_b64}" style="width:180px; margin-bottom:12px; border-radius:20px;">'
     else:
         _logo_html = '<div style="font-size:3rem; margin-bottom:16px;">🏀</div>'
 
@@ -771,11 +771,11 @@ def render_overall(scores):
 # 헤더
 # ---------------------------------------------------------------------------
 import base64 as _b64
-_main_logo_path = os.path.join(os.path.dirname(__file__), "assets", "main shoot.png")
+_main_logo_path = os.path.join(os.path.dirname(__file__), "assets", "shoot.png")
 if os.path.exists(_main_logo_path):
     with open(_main_logo_path, "rb") as _mf:
         _main_logo_b64 = _b64.b64encode(_mf.read()).decode()
-    st.markdown(f'<div style="text-align:center;padding-top:20px;"><img src="data:image/png;base64,{_main_logo_b64}" style="width:220px;"></div>', unsafe_allow_html=True)
+    st.markdown(f'<div style="text-align:center;padding-top:20px;"><img src="data:image/png;base64,{_main_logo_b64}" style="width:220px; border-radius:20px;"></div>', unsafe_allow_html=True)
 else:
     st.markdown('<div class="hero-title">Shot Form Analyzer</div>', unsafe_allow_html=True)
 st.markdown('<div class="hero-subtitle">AI 기반 슛 자세 분석 — 프로처럼 쏴보세요</div>', unsafe_allow_html=True)
