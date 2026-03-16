@@ -1,7 +1,6 @@
 import os
 import gc
 import streamlit as st
-from streamlit_cookies_controller import CookieController
 from analyzer import (
     analyze_side_video, analyze_front_video,
     draw_skeleton, draw_front_skeleton,
@@ -9,8 +8,6 @@ from analyzer import (
     draw_front_comparison, draw_shot_height_comparison, draw_shot_direction_comparison,
 )
 from feedback import generate_feedback, CRITERIA
-
-cookie_controller = CookieController()
 
 # ---------------------------------------------------------------------------
 # Supabase 이메일 인증 + 승인 관리
@@ -45,20 +42,6 @@ def _check_auth():
     if "user_email" in st.session_state:
         return
 
-    # 쿠키에서 로그인 정보 복원 (타이밍 대기)
-    cookies = cookie_controller.getAll()
-    if cookies and "auth_email" in cookies:
-        st.session_state["user_email"] = cookies["auth_email"]
-        st.session_state["user_name"] = cookies["auth_email"].split("@")[0]
-        st.rerun()
-    elif cookies is None:
-        # 쿠키 컴포넌트가 아직 로드되지 않음 — 1회만 재시도
-        if not st.session_state.get("_cookie_retry"):
-            st.session_state["_cookie_retry"] = True
-            import time
-            time.sleep(0.5)
-            st.rerun()
-
     import base64
     _logo_path = os.path.join(os.path.dirname(__file__), "assets", "main shoot.png")
     if os.path.exists(_logo_path):
@@ -92,8 +75,6 @@ def _check_auth():
                         })
                         st.session_state["user_email"] = res.user.email
                         st.session_state["user_name"] = res.user.email.split("@")[0]
-                        # 쿠키에 로그인 정보 저장 (24시간)
-                        cookie_controller.set("auth_email", res.user.email, max_age=86400)
                         st.rerun()
                     except Exception as e:
                         st.error("로그인 실패: 이메일 또는 비밀번호를 확인하세요.")
@@ -209,8 +190,6 @@ def _show_menu():
             st.session_state["page"] = "admin"
             st.rerun()
         elif choice == "로그아웃":
-            # 쿠키 삭제
-            cookie_controller.remove("auth_email")
             # session_state 초기화
             for key in list(st.session_state.keys()):
                 del st.session_state[key]
