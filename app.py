@@ -61,14 +61,14 @@ def _check_auth():
     if not supabase:
         return  # secrets 없으면 인증 없이 사용 (로컬 개발용)
 
+    if "user_email" in st.session_state:
+        return
+
     # 수업 모드면 로그인 없이 바로 사용
-    if _is_class_mode() and "user_email" not in st.session_state:
+    if _is_class_mode():
         st.session_state["user_email"] = "class_mode@student"
         st.session_state["user_name"] = "학생"
         st.session_state["user_role"] = "user"
-        return
-
-    if "user_email" in st.session_state:
         return
 
     import base64
@@ -139,6 +139,9 @@ def _check_approved():
     """관리자 승인 여부 확인 + 역할 설정"""
     email = st.session_state.get("user_email", "")
     if not email:
+        return
+    # 수업 모드 학생은 승인 체크 건너뛰기
+    if email == "class_mode@student":
         return
 
     supabase = _init_supabase()
