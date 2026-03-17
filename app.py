@@ -1000,6 +1000,92 @@ if analyze_btn and can_analyze:
             render_feedback("FINGER", fb["finger_direction_score"], fb["finger_direction_best"], fb["finger_direction_yourform"], finger_img)
 
 # ---------------------------------------------------------------------------
+# 리포트 다운로드
+# ---------------------------------------------------------------------------
+def _generate_report_html(sport_label, all_scores, fb, side_result, front_result):
+    """분석 결과를 HTML 리포트로 생성"""
+    from datetime import datetime
+    date_str = datetime.now().strftime("%Y년 %m월 %d일 %H:%M")
+    avg_score = round(sum(all_scores) / len(all_scores)) if all_scores else 0
+
+    # 점수 항목 HTML
+    score_rows = ""
+    score_keys = []
+    if side_result:
+        score_keys += [("ELBOW", "elbow"), ("KNEE", "knee"), ("POSTURE", "lean")]
+        if "shot_height_score" in fb:
+            score_keys += [("SHOT HEIGHT", "shot_height"), ("DIRECTION", "shot_direction")]
+    if front_result:
+        score_keys += [("ALIGNMENT", "alignment"), ("SHOULDERS", "shoulder_level"), ("FINGER", "finger_direction")]
+
+    for label, key in score_keys:
+        score = fb.get(f"{key}_score", 0)
+        best = fb.get(f"{key}_best", "")
+        yourform = fb.get(f"{key}_yourform", "")
+        color = "#00D4AA" if score >= 90 else "#00A3FF" if score >= 70 else "#FFB800" if score >= 50 else "#FF4757"
+        score_rows += f"""
+        <div style="border:1px solid #333; border-radius:12px; padding:16px; margin-bottom:12px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                <span style="font-weight:700; font-size:1rem;">{label}</span>
+                <span style="font-weight:800; font-size:1.3rem; color:{color};">{score}점</span>
+            </div>
+            <div style="border-left:3px solid #00D4AA; padding:8px 12px; margin:6px 0; background:#0D1F17; border-radius:0 8px 8px 0;">
+                <div style="color:#00D4AA; font-weight:700; font-size:0.8rem; margin-bottom:2px;">BEST</div>
+                <div style="font-size:0.85rem; line-height:1.5; color:#C0E8D8;">{best}</div>
+            </div>
+            <div style="border-left:3px solid #FF4757; padding:8px 12px; margin:6px 0; background:#1F0D10; border-radius:0 8px 8px 0;">
+                <div style="color:#FF4757; font-weight:700; font-size:0.8rem; margin-bottom:2px;">YOUR FORM</div>
+                <div style="font-size:0.85rem; line-height:1.5; color:#E8C0C4;">{yourform}</div>
+            </div>
+        </div>
+        """
+
+    grade = "Excellent!" if avg_score >= 90 else "Good!" if avg_score >= 70 else "Keep Practicing!"
+
+    html = f"""<!DOCTYPE html>
+<html><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css');
+body {{ font-family: 'Pretendard Variable', sans-serif; background: #0A0A0F; color: #E8E8ED; margin: 0; padding: 20px; }}
+.container {{ max-width: 600px; margin: 0 auto; }}
+.header {{ text-align: center; padding: 24px 0; }}
+.title {{ font-size: 1.8rem; font-weight: 800; background: linear-gradient(135deg, #00D4AA, #00A3FF); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }}
+.subtitle {{ color: #8888A0; font-size: 0.9rem; margin-top: 4px; }}
+.overall {{ text-align: center; padding: 20px 0; }}
+.score-circle {{ display: inline-flex; width: 120px; height: 120px; border-radius: 50%; align-items: center; justify-content: center; flex-direction: column; background: linear-gradient(135deg, rgba(0,212,170,0.15), rgba(0,163,255,0.15)); border: 3px solid {("#00D4AA" if avg_score >= 90 else "#00A3FF" if avg_score >= 70 else "#FFB800" if avg_score >= 50 else "#FF4757")}; }}
+.score-num {{ font-size: 2.5rem; font-weight: 900; color: {("#00D4AA" if avg_score >= 90 else "#00A3FF" if avg_score >= 70 else "#FFB800" if avg_score >= 50 else "#FF4757")}; }}
+.footer {{ text-align: center; color: #555; font-size: 0.75rem; padding: 20px 0; }}
+</style></head><body>
+<div class="container">
+    <div class="header">
+        <div class="title">Shot Form Analyzer</div>
+        <div class="subtitle">{sport_label} · {date_str}</div>
+    </div>
+    <div class="overall">
+        <div class="score-circle">
+            <div class="score-num">{avg_score}</div>
+            <div style="font-size:0.65rem; color:#8888A0; text-transform:uppercase; letter-spacing:1px;">OVERALL</div>
+        </div>
+        <div style="font-size:1rem; font-weight:700; margin-top:8px; color:#E8E8ED;">{grade}</div>
+    </div>
+    {score_rows}
+    <div class="footer">Made by 세종넷볼협회</div>
+</div>
+</body></html>"""
+    return html
+
+if "fb" in dir() and fb and all_scores:
+    report_html = _generate_report_html(sport, all_scores, fb, side_result, front_result)
+    st.download_button(
+        label="리포트 다운로드 (HTML)",
+        data=report_html,
+        file_name="shot_analysis_report.html",
+        mime="text/html",
+        use_container_width=True,
+    )
+
+# ---------------------------------------------------------------------------
 # 하단
 # ---------------------------------------------------------------------------
 st.markdown('<div class="section-divider"></div>', unsafe_allow_html=True)
