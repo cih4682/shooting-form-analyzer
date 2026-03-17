@@ -61,11 +61,17 @@ def _check_auth():
     if not supabase:
         return  # secrets 없으면 인증 없이 사용 (로컬 개발용)
 
+    admin_bypass = st.query_params.get("admin") == "1"
+
+    # ?admin=1인데 class_mode@student이면 세션 초기화 → 로그인 화면
+    if admin_bypass and st.session_state.get("user_email") == "class_mode@student":
+        for key in list(st.session_state.keys()):
+            del st.session_state[key]
+
     if "user_email" in st.session_state:
         return
 
     # 수업 모드면 로그인 없이 바로 사용 (?admin=1이면 수업 모드 무시)
-    admin_bypass = st.query_params.get("admin") == "1"
     if _is_class_mode() and not admin_bypass:
         st.session_state["user_email"] = "class_mode@student"
         st.session_state["user_name"] = "학생"
