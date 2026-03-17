@@ -205,20 +205,126 @@ def _show_menu():
             st.session_state["menu_open"] = not st.session_state.get("menu_open", False)
 
     if st.session_state.get("menu_open", False):
-        items = ["분석기", "로그아웃"]
+        items = ["분석기"]
+        if is_admin:
+            items.append("관리자 모드")
+        items.append("로그아웃")
         choice = st.radio(
             "nav", items,
             label_visibility="collapsed",
             key="nav_radio",
             horizontal=True,
         )
-        if choice == "로그아웃":
+        if choice == "관리자 모드":
+            st.session_state["menu_open"] = False
+            st.session_state["page"] = "admin"
+            st.rerun()
+        elif choice == "로그아웃":
             for key in list(st.session_state.keys()):
                 del st.session_state[key]
             st.query_params.clear()
             st.rerun()
 
+    if st.session_state.get("page") == "admin" and is_admin:
+        return "admin"
     return "analyzer"
+
+
+def _admin_page():
+    """관리자 페이지"""
+    supabase = _init_supabase()
+    email = st.session_state.get("user_email", "")
+    role = st.session_state.get("user_role", "")
+    role_label = "최고관리자" if role == "superadmin" else "관리자"
+
+    st.markdown(f"""
+    <div style="text-align:center; padding:20px 0 10px 0;">
+        <div style="font-size:1.5rem; font-weight:700; color:#00D4AA;">관리자 모드</div>
+        <div style="color:#8888A0; font-size:0.85rem;">{email} ({role_label})</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    if st.button("← 돌아가기", key="back_to_analyzer"):
+        st.session_state["page"] = "analyzer"
+        st.rerun()
+
+    st.markdown("---")
+
+    # 수업 모드 토글
+    class_mode_on = _is_class_mode()
+    if class_mode_on:
+        st.success("수업 모드: ON — 학생들이 로그인 없이 사용 중")
+        if st.button("수업 모드 끄기", key="class_mode_off"):
+            _toggle_class_mode(False)
+            st.rerun()
+    else:
+        st.info("수업 모드: OFF — 학생들이 로그인해야 사용 가능")
+        if st.button("수업 모드 켜기", key="class_mode_on"):
+            _toggle_class_mode(True)
+            st.rerun()
+
+    st.markdown("---")
+
+    # 사용자 관리
+    try:
+        approved_res = supabase.table("approved_users").select("email, role, created_at").execute()
+        approved_map = {r["email"]: r for r in (approved_res.data or [])}
+    except Exception:
+        approved_map = {}
+
+    try:
+        pending_res = supabase.table("pending_users").select("email, created_at").execute()
+        pending_users = [r for r in (pending_res.data or []) if r["email"] not in approved_map]
+    except Exception:
+        pending_users = []
+
+    tab_pending, tab_approved, tab_admin = st.tabs(["승인 대기", "승인된 사용자", "관리자"])
+
+    with tab_pending:
+        if pending_users:
+            for u in pending_users:
+                col1, col2, col3 = st.columns([5, 2, 2])
+                col1.write(u["email"])
+                if col2.button("승인", key=f"approve_{u['email']}"):
+                    supabase.table("approved_users").insert({"email": u["email"], "role": "user"}).execute()
+                    supabase.table("pending_users").delete().eq("email", u["email"]).execute()
+                    st.rerun()
+                if col3.button("삭제", key=f"reject_{u['email']}"):
+                    supabase.table("pending_users").delete().eq("email", u["email"]).execute()
+                    st.rerun()
+        else:
+            st.caption("대기 중인 사용자가 없습니다.")
+
+    with tab_approved:
+        for e, info in approved_map.items():
+            if info.get("role") in ("admin", "superadmin"):
+                continue
+            col1, col2, col3 = st.columns([5, 2, 2])
+            col1.write(e)
+            if role == "superadmin":
+                if col2.button("관리자", key=f"promote_{e}"):
+                    supabase.table("approved_users").update({"role": "admin"}).eq("email", e).execute()
+                    st.rerun()
+            if col3.button("삭제", key=f"del_{e}"):
+                supabase.table("approved_users").delete().eq("email", e).execute()
+                st.rerun()
+
+    with tab_admin:
+        if role == "superadmin":
+            admins = [e for e, info in approved_map.items() if info.get("role") == "admin"]
+            if admins:
+                for a in admins:
+                    col1, col2 = st.columns([6, 3])
+                    col1.write(a)
+                    if col2.button("해제", key=f"demote_{a}"):
+                        supabase.table("approved_users").update({"role": "user"}).eq("email", a).execute()
+                        st.rerun()
+            else:
+                st.caption("지정된 관리자가 없습니다.")
+            st.caption(f"최고관리자: {email}")
+        else:
+            st.warning("최고관리자만 관리자를 관리할 수 있습니다.")
+
 
 # ---------------------------------------------------------------------------
 # 페이지 설정
@@ -234,7 +340,11 @@ st.set_page_config(
 # ---------------------------------------------------------------------------
 _check_auth()
 _check_approved()
-_show_menu()
+_current_page = _show_menu()
+
+if _current_page == "admin":
+    _admin_page()
+    st.stop()
 
 # ---------------------------------------------------------------------------
 # 커스텀 CSS
