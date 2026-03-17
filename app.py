@@ -64,8 +64,9 @@ def _check_auth():
     if "user_email" in st.session_state:
         return
 
-    # 수업 모드면 로그인 없이 바로 사용
-    if _is_class_mode():
+    # 수업 모드면 로그인 없이 바로 사용 (?admin=1이면 수업 모드 무시)
+    admin_bypass = st.query_params.get("admin") == "1"
+    if _is_class_mode() and not admin_bypass:
         st.session_state["user_email"] = "class_mode@student"
         st.session_state["user_name"] = "학생"
         st.session_state["user_role"] = "user"
@@ -214,6 +215,7 @@ def _show_menu():
         if choice == "로그아웃":
             for key in list(st.session_state.keys()):
                 del st.session_state[key]
+            st.query_params.clear()
             st.rerun()
 
     return "analyzer"
