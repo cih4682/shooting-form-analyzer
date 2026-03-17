@@ -337,7 +337,7 @@ def _admin_page():
 # ---------------------------------------------------------------------------
 st.set_page_config(
     page_title="Shot Form Analyzer",
-    page_icon="🏀",
+    page_icon="assets/home.png",
     layout="wide",
 )
 
