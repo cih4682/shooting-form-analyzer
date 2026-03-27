@@ -797,21 +797,23 @@ def _parse_drive_id(url: str):
 
 def _download_drive_file(file_id: str) -> bytes | None:
     """Google Drive에서 파일을 다운로드한다 (공개/링크 공유 필요)."""
-    url = f"https://drive.google.com/uc?export=download&id={file_id}"
     session = requests.Session()
-    resp = session.get(url, stream=True, timeout=30)
-    # 대용량 파일 경고 페이지 처리
-    for key, value in resp.cookies.items():
-        if key.startswith("download_warning"):
-            url = f"https://drive.google.com/uc?export=download&confirm={value}&id={file_id}"
-            resp = session.get(url, stream=True, timeout=60)
-            break
-    if resp.status_code != 200:
-        return None
-    data = resp.content
-    if len(data) < 1000 or b"<!DOCTYPE" in data[:500]:
-        return None  # HTML 에러 페이지
-    return data
+    # 방법 1: confirm=t 파라미터로 바로 다운로드
+    url = f"https://drive.google.com/uc?export=download&confirm=t&id={file_id}"
+    headers = {"User-Agent": "Mozilla/5.0"}
+    resp = session.get(url, headers=headers, timeout=60, allow_redirects=True)
+    if resp.status_code == 200:
+        data = resp.content
+        if len(data) > 1000 and b"<!DOCTYPE" not in data[:500]:
+            return data
+    # 방법 2: Drive API 직접 접근
+    url2 = f"https://www.googleapis.com/drive/v3/files/{file_id}?alt=media"
+    resp2 = session.get(url2, headers=headers, timeout=60)
+    if resp2.status_code == 200:
+        data2 = resp2.content
+        if len(data2) > 1000 and b"<!DOCTYPE" not in data2[:500]:
+            return data2
+    return None
 
 # ---------------------------------------------------------------------------
 # 영상 업로드 (농구/넷볼 공통: 측면 + 정면, 하나만 올려도 분석 가능)
