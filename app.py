@@ -1,5 +1,7 @@
 import os
 import gc
+import re
+import requests
 import streamlit as st
 from analyzer import (
     analyze_side_video, analyze_front_video,
@@ -781,15 +783,93 @@ st.markdown(f'<div class="guide-box">{guide_text}</div>', unsafe_allow_html=True
 st.markdown("<br>", unsafe_allow_html=True)
 
 # ---------------------------------------------------------------------------
+# Google Drive URL → 바이트 다운로드
+# ---------------------------------------------------------------------------
+def _parse_drive_id(url: str):
+    """Google Drive 공유 링크에서 file ID를 추출한다."""
+    m = re.search(r'/d/([a-zA-Z0-9_-]+)', url)
+    if m:
+        return m.group(1)
+    m = re.search(r'id=([a-zA-Z0-9_-]+)', url)
+    if m:
+        return m.group(1)
+    return None
+
+def _download_drive_file(file_id: str) -> bytes | None:
+    """Google Drive에서 파일을 다운로드한다 (공개/링크 공유 필요)."""
+    url = f"https://drive.google.com/uc?export=download&id={file_id}"
+    session = requests.Session()
+    resp = session.get(url, stream=True, timeout=30)
+    # 대용량 파일 경고 페이지 처리
+    for key, value in resp.cookies.items():
+        if key.startswith("download_warning"):
+            url = f"https://drive.google.com/uc?export=download&confirm={value}&id={file_id}"
+            resp = session.get(url, stream=True, timeout=60)
+            break
+    if resp.status_code != 200:
+        return None
+    data = resp.content
+    if len(data) < 1000 or b"<!DOCTYPE" in data[:500]:
+        return None  # HTML 에러 페이지
+    return data
+
+# ---------------------------------------------------------------------------
 # 영상 업로드 (농구/넷볼 공통: 측면 + 정면, 하나만 올려도 분석 가능)
 # ---------------------------------------------------------------------------
-up_col1, up_col2 = st.columns(2)
-with up_col1:
-    side_video = st.file_uploader("SIDE VIEW", type=["mp4", "mov"], key="side")
-with up_col2:
-    front_video = st.file_uploader("FRONT VIEW", type=["mp4", "mov"], key="front")
+upload_mode = st.radio(
+    "영상 입력 방식",
+    ["파일 직접 업로드", "Google Drive 링크"],
+    horizontal=True,
+    label_visibility="collapsed",
+)
 
-can_analyze = (side_video is not None) or (front_video is not None)
+side_video = None
+front_video = None
+side_drive_bytes = None
+front_drive_bytes = None
+
+if upload_mode == "파일 직접 업로드":
+    up_col1, up_col2 = st.columns(2)
+    with up_col1:
+        side_video = st.file_uploader("SIDE VIEW", type=["mp4", "mov"], key="side")
+    with up_col2:
+        front_video = st.file_uploader("FRONT VIEW", type=["mp4", "mov"], key="front")
+else:
+    st.markdown(
+        '<p style="color:#888;font-size:0.85rem;">'
+        'Google Drive 영상의 공유 링크를 붙여넣으세요. (공유 설정: "링크가 있는 모든 사용자")'
+        '</p>',
+        unsafe_allow_html=True,
+    )
+    dr_col1, dr_col2 = st.columns(2)
+    with dr_col1:
+        side_url = st.text_input("SIDE VIEW URL", key="side_url", placeholder="https://drive.google.com/file/d/...")
+    with dr_col2:
+        front_url = st.text_input("FRONT VIEW URL", key="front_url", placeholder="https://drive.google.com/file/d/...")
+
+    # Drive URL → 바이트 변환
+    if side_url:
+        fid = _parse_drive_id(side_url)
+        if fid:
+            with st.spinner("측면 영상 다운로드 중..."):
+                side_drive_bytes = _download_drive_file(fid)
+            if not side_drive_bytes:
+                st.error("측면 영상을 다운로드할 수 없습니다. 공유 설정을 확인해주세요.")
+        else:
+            st.error("올바른 Google Drive 링크가 아닙니다.")
+    if front_url:
+        fid = _parse_drive_id(front_url)
+        if fid:
+            with st.spinner("정면 영상 다운로드 중..."):
+                front_drive_bytes = _download_drive_file(fid)
+            if not front_drive_bytes:
+                st.error("정면 영상을 다운로드할 수 없습니다. 공유 설정을 확인해주세요.")
+        else:
+            st.error("올바른 Google Drive 링크가 아닙니다.")
+
+has_side = (side_video is not None) or (side_drive_bytes is not None)
+has_front = (front_video is not None) or (front_drive_bytes is not None)
+can_analyze = has_side or has_front
 
 st.markdown("<br>", unsafe_allow_html=True)
 analyze_btn = st.button("ANALYZE", disabled=(not can_analyze), use_container_width=True)
@@ -806,10 +886,10 @@ if analyze_btn and can_analyze:
 
     # --- 측면 분석 ---
     side_result = None
-    if side_video is not None:
+    if side_video is not None or side_drive_bytes is not None:
         with st.spinner("Analyzing side view..."):
             try:
-                side_bytes = side_video.read()
+                side_bytes = side_drive_bytes if side_drive_bytes else side_video.read()
                 side_result = analyze_side_video(side_bytes)
                 del side_bytes
                 gc.collect()
@@ -826,10 +906,10 @@ if analyze_btn and can_analyze:
 
     # --- 정면 분석 ---
     front_result = None
-    if front_video is not None:
+    if front_video is not None or front_drive_bytes is not None:
         with st.spinner("Analyzing front view..."):
             try:
-                front_bytes = front_video.read()
+                front_bytes = front_drive_bytes if front_drive_bytes else front_video.read()
                 front_result = analyze_front_video(front_bytes)
                 del front_bytes
                 gc.collect()
