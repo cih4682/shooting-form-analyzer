@@ -846,7 +846,7 @@ def _list_drive_folder(folder_id: str, api_key: str):
 # ---------------------------------------------------------------------------
 upload_mode = st.radio(
     "영상 입력 방식",
-    ["파일 직접 업로드", "Google Drive 링크", "폴더 일괄 분석"],
+    ["파일 직접 업로드", "Google Drive", "폴더 일괄 분석"],
     horizontal=True,
     label_visibility="collapsed",
 )
@@ -864,18 +864,28 @@ if upload_mode == "파일 직접 업로드":
     with up_col2:
         front_video = st.file_uploader("FRONT VIEW", type=["mp4", "mov"], key="front")
 
-elif upload_mode == "Google Drive 링크":
-    st.markdown(
-        '<p style="color:#888;font-size:0.85rem;">'
-        'Google Drive 영상의 공유 링크를 붙여넣으세요. (공유 설정: "링크가 있는 모든 사용자")'
-        '</p>',
-        unsafe_allow_html=True,
-    )
+elif upload_mode == "Google Drive":
     dr_col1, dr_col2 = st.columns(2)
     with dr_col1:
-        side_url = st.text_input("SIDE VIEW URL", key="side_url", placeholder="https://drive.google.com/file/d/...")
+        st.markdown(
+            '<a href="https://drive.google.com" target="_blank" '
+            'style="display:block;text-align:center;padding:14px;margin-bottom:8px;'
+            'background:#1a1a2e;border:1px dashed #00D4AA;border-radius:12px;'
+            'color:#00D4AA;font-weight:700;text-decoration:none;font-size:0.95rem;">'
+            'Select Side View from Google Drive</a>',
+            unsafe_allow_html=True,
+        )
+        side_url = st.text_input("link", key="side_url", placeholder="Paste link here", label_visibility="collapsed")
     with dr_col2:
-        front_url = st.text_input("FRONT VIEW URL", key="front_url", placeholder="https://drive.google.com/file/d/...")
+        st.markdown(
+            '<a href="https://drive.google.com" target="_blank" '
+            'style="display:block;text-align:center;padding:14px;margin-bottom:8px;'
+            'background:#1a1a2e;border:1px dashed #00D4AA;border-radius:12px;'
+            'color:#00D4AA;font-weight:700;text-decoration:none;font-size:0.95rem;">'
+            'Select Front View from Google Drive</a>',
+            unsafe_allow_html=True,
+        )
+        front_url = st.text_input("link", key="front_url", placeholder="Paste link here", label_visibility="collapsed")
 
     if side_url:
         fid = _parse_drive_id(side_url)
