@@ -816,11 +816,37 @@ def _download_drive_file(file_id: str) -> bytes | None:
     return None
 
 # ---------------------------------------------------------------------------
+# Google Drive 폴더 내 파일 목록 조회
+# ---------------------------------------------------------------------------
+def _parse_folder_id(url: str):
+    """Google Drive 폴더 공유 링크에서 folder ID를 추출한다."""
+    m = re.search(r'/folders/([a-zA-Z0-9_-]+)', url)
+    if m:
+        return m.group(1)
+    return None
+
+def _list_drive_folder(folder_id: str, api_key: str):
+    """Drive API로 폴더 내 영상 파일 목록을 시간순으로 반환한다."""
+    url = "https://www.googleapis.com/drive/v3/files"
+    params = {
+        "q": f"'{folder_id}' in parents and (mimeType contains 'video/')",
+        "key": api_key,
+        "fields": "files(id,name,createdTime,size)",
+        "orderBy": "createdTime",
+        "pageSize": 1000,
+    }
+    resp = requests.get(url, params=params, timeout=15)
+    if resp.status_code != 200:
+        return None, resp.text
+    data = resp.json()
+    return data.get("files", []), None
+
+# ---------------------------------------------------------------------------
 # 영상 업로드 (농구/넷볼 공통: 측면 + 정면, 하나만 올려도 분석 가능)
 # ---------------------------------------------------------------------------
 upload_mode = st.radio(
     "영상 입력 방식",
-    ["파일 직접 업로드", "Google Drive 링크"],
+    ["파일 직접 업로드", "Google Drive 링크", "폴더 일괄 분석"],
     horizontal=True,
     label_visibility="collapsed",
 )
@@ -829,6 +855,7 @@ side_video = None
 front_video = None
 side_drive_bytes = None
 front_drive_bytes = None
+batch_pairs = []  # [(이름, front_id, side_id), ...]
 
 if upload_mode == "파일 직접 업로드":
     up_col1, up_col2 = st.columns(2)
@@ -836,7 +863,8 @@ if upload_mode == "파일 직접 업로드":
         side_video = st.file_uploader("SIDE VIEW", type=["mp4", "mov"], key="side")
     with up_col2:
         front_video = st.file_uploader("FRONT VIEW", type=["mp4", "mov"], key="front")
-else:
+
+elif upload_mode == "Google Drive 링크":
     st.markdown(
         '<p style="color:#888;font-size:0.85rem;">'
         'Google Drive 영상의 공유 링크를 붙여넣으세요. (공유 설정: "링크가 있는 모든 사용자")'
@@ -849,7 +877,6 @@ else:
     with dr_col2:
         front_url = st.text_input("FRONT VIEW URL", key="front_url", placeholder="https://drive.google.com/file/d/...")
 
-    # Drive URL → 바이트 변환
     if side_url:
         fid = _parse_drive_id(side_url)
         if fid:
@@ -869,9 +896,60 @@ else:
         else:
             st.error("올바른 Google Drive 링크가 아닙니다.")
 
+else:  # 폴더 일괄 분석
+    st.markdown(
+        '<div style="background:#12121A;border:1px solid #2A2A3A;border-radius:12px;padding:16px;margin-bottom:12px;">'
+        '<p style="color:#00D4AA;font-weight:700;margin:0 0 8px 0;">촬영 순서 규칙</p>'
+        '<p style="color:#C8C8D0;font-size:0.9rem;margin:0;line-height:1.6;">'
+        '1번 학생: 정면 촬영 → 측면 촬영<br>'
+        '2번 학생: 정면 촬영 → 측면 촬영<br>'
+        '... 시간순으로 2개씩 자동 매칭됩니다.</p>'
+        '</div>',
+        unsafe_allow_html=True,
+    )
+    api_key = st.text_input(
+        "Google API Key",
+        type="password",
+        placeholder="AIza...",
+        help="Google Cloud Console → API 및 서비스 → 사용자 인증 정보에서 발급",
+    )
+    folder_url = st.text_input(
+        "Google Drive 폴더 링크",
+        placeholder="https://drive.google.com/drive/folders/...",
+    )
+
+    if api_key and folder_url:
+        fid = _parse_folder_id(folder_url)
+        if fid:
+            files, err = _list_drive_folder(fid, api_key)
+            if err:
+                st.error(f"폴더 조회 실패: {err}")
+            elif not files:
+                st.warning("폴더에 영상 파일이 없습니다.")
+            else:
+                # 2개씩 묶기 (정면, 측면)
+                for i in range(0, len(files) - 1, 2):
+                    front_file = files[i]
+                    side_file = files[i + 1]
+                    # 이름에서 번호 추출 또는 순번 사용
+                    student_num = (i // 2) + 1
+                    batch_pairs.append((f"학생 {student_num}", front_file["id"], side_file["id"], front_file["name"], side_file["name"]))
+                if len(files) % 2 == 1:
+                    last = files[-1]
+                    student_num = (len(files) // 2) + 1
+                    batch_pairs.append((f"학생 {student_num}", last["id"], None, last["name"], None))
+
+                st.success(f"영상 {len(files)}개 발견 → {len(batch_pairs)}명 분석 예정")
+                with st.expander("매칭 확인", expanded=False):
+                    for name, _, _, fn_front, fn_side in batch_pairs:
+                        side_txt = fn_side if fn_side else "(없음)"
+                        st.markdown(f"**{name}** — 정면: `{fn_front}` / 측면: `{side_txt}`")
+        else:
+            st.error("올바른 Google Drive 폴더 링크가 아닙니다.")
+
 has_side = (side_video is not None) or (side_drive_bytes is not None)
 has_front = (front_video is not None) or (front_drive_bytes is not None)
-can_analyze = has_side or has_front
+can_analyze = has_side or has_front or len(batch_pairs) > 0
 
 st.markdown("<br>", unsafe_allow_html=True)
 analyze_btn = st.button("ANALYZE", disabled=(not can_analyze), use_container_width=True)
@@ -879,7 +957,180 @@ analyze_btn = st.button("ANALYZE", disabled=(not can_analyze), use_container_wid
 # ---------------------------------------------------------------------------
 # 분석 실행
 # ---------------------------------------------------------------------------
-if analyze_btn and can_analyze:
+if analyze_btn and can_analyze and len(batch_pairs) > 0:
+    # ===== 배치 분석 모드 =====
+    st.markdown('<div class="section-divider"></div>', unsafe_allow_html=True)
+    st.markdown(
+        f'<h2 style="text-align:center;color:#00D4AA;">일괄 분석 결과 ({len(batch_pairs)}명)</h2>',
+        unsafe_allow_html=True,
+    )
+    progress = st.progress(0)
+    batch_results = []
+
+    for idx, (student_name, front_fid, side_fid, fn_front, fn_side) in enumerate(batch_pairs):
+        progress.progress((idx) / len(batch_pairs), text=f"{student_name} 분석 중... ({idx+1}/{len(batch_pairs)})")
+
+        b_side_result = None
+        b_front_result = None
+
+        # 정면 다운로드 & 분석
+        if front_fid:
+            try:
+                fb_bytes = _download_drive_file(front_fid)
+                if fb_bytes:
+                    b_front_result = analyze_front_video(fb_bytes)
+                    del fb_bytes
+                    if b_front_result and b_front_result.get("error"):
+                        b_front_result = None
+            except Exception:
+                b_front_result = None
+
+        # 측면 다운로드 & 분석
+        if side_fid:
+            try:
+                sb_bytes = _download_drive_file(side_fid)
+                if sb_bytes:
+                    b_side_result = analyze_side_video(sb_bytes)
+                    del sb_bytes
+                    if b_side_result and b_side_result.get("error"):
+                        b_side_result = None
+            except Exception:
+                b_side_result = None
+
+        gc.collect()
+
+        if b_side_result or b_front_result:
+            fb_kwargs = {}
+            if b_side_result:
+                fb_kwargs["elbow_angle"] = b_side_result["elbow_angle"]
+                fb_kwargs["knee_angle"] = b_side_result["knee_angle"]
+                fb_kwargs["lean_angle"] = b_side_result["lean_angle"]
+                if sport_key == "netball":
+                    fb_kwargs["shot_height_above_head"] = b_side_result["shot_height_above_head"]
+                    fb_kwargs["shot_height_in_front"] = b_side_result.get("shot_height_in_front", False)
+                    fb_kwargs["shot_direction_angle"] = b_side_result["shot_direction_angle"]
+            if b_front_result:
+                fb_kwargs["alignment_angle"] = b_front_result["alignment_angle"]
+                fb_kwargs["shoulder_level_angle"] = b_front_result["shoulder_level_angle"]
+                fb_kwargs["finger_direction_angle"] = b_front_result["finger_direction_angle"]
+
+            fb = generate_feedback(sport_key, **fb_kwargs)
+            all_scores = []
+            if b_side_result:
+                all_scores += [fb["elbow_score"], fb["knee_score"], fb["lean_score"]]
+                if sport_key == "netball":
+                    all_scores += [fb["shot_height_score"], fb["shot_direction_score"]]
+            if b_front_result:
+                all_scores += [fb["alignment_score"], fb["shoulder_level_score"], fb["finger_direction_score"]]
+            avg_score = round(sum(all_scores) / len(all_scores)) if all_scores else 0
+            batch_results.append((student_name, avg_score, all_scores, fb, b_side_result, b_front_result))
+        else:
+            batch_results.append((student_name, 0, [], None, None, None))
+
+    progress.progress(1.0, text="분석 완료!")
+
+    # --- 배치 결과 요약 테이블 ---
+    st.markdown('<div class="section-divider"></div>', unsafe_allow_html=True)
+    summary_html = '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;text-align:center;">'
+    summary_html += '<tr style="border-bottom:2px solid #333;">'
+    summary_html += '<th style="padding:10px;color:#8888A0;">이름</th>'
+    summary_html += '<th style="padding:10px;color:#8888A0;">총점</th>'
+    summary_html += '<th style="padding:10px;color:#8888A0;">등급</th>'
+    summary_html += '<th style="padding:10px;color:#8888A0;">핵심 피드백</th></tr>'
+
+    for student_name, avg_score, _, fb, sr, fr in batch_results:
+        if avg_score == 0:
+            color = "#666"
+            grade = "-"
+            tip = "분석 실패"
+        elif avg_score >= 90:
+            color = "#00D4AA"
+            grade = "Excellent"
+            tip = "훌륭합니다!"
+        elif avg_score >= 70:
+            color = "#00A3FF"
+            grade = "Good"
+            # 가장 낮은 항목 찾기
+            tip = ""
+            if fb:
+                worst_score = 100
+                worst_key = ""
+                for k in ["elbow", "knee", "lean", "alignment", "shoulder_level"]:
+                    s = fb.get(f"{k}_score")
+                    if s is not None and s < worst_score:
+                        worst_score = s
+                        worst_key = k
+                if worst_key:
+                    tip = fb.get(f"{worst_key}_yourform", "")[:40]
+        elif avg_score >= 50:
+            color = "#FFB800"
+            grade = "Fair"
+            tip = ""
+            if fb:
+                worst_score = 100
+                worst_key = ""
+                for k in ["elbow", "knee", "lean", "alignment", "shoulder_level"]:
+                    s = fb.get(f"{k}_score")
+                    if s is not None and s < worst_score:
+                        worst_score = s
+                        worst_key = k
+                if worst_key:
+                    tip = fb.get(f"{worst_key}_yourform", "")[:40]
+        else:
+            color = "#FF4757"
+            grade = "Needs Work"
+            tip = ""
+            if fb:
+                worst_score = 100
+                worst_key = ""
+                for k in ["elbow", "knee", "lean", "alignment", "shoulder_level"]:
+                    s = fb.get(f"{k}_score")
+                    if s is not None and s < worst_score:
+                        worst_score = s
+                        worst_key = k
+                if worst_key:
+                    tip = fb.get(f"{worst_key}_yourform", "")[:40]
+
+        summary_html += (
+            f'<tr style="border-bottom:1px solid #222;">'
+            f'<td style="padding:10px;font-weight:700;">{student_name}</td>'
+            f'<td style="padding:10px;font-weight:800;font-size:1.2rem;color:{color};">{avg_score}</td>'
+            f'<td style="padding:10px;color:{color};">{grade}</td>'
+            f'<td style="padding:10px;color:#999;font-size:0.85rem;text-align:left;">{tip}</td></tr>'
+        )
+
+    summary_html += '</table></div>'
+    st.markdown(summary_html, unsafe_allow_html=True)
+
+    # --- 학생별 상세 보기 (접기) ---
+    for student_name, avg_score, all_scores, fb, b_side_result, b_front_result in batch_results:
+        if fb is None:
+            continue
+        with st.expander(f"{student_name} — {avg_score}점 상세 보기"):
+            score_items = []
+            if b_side_result:
+                score_items += [("ELBOW", fb["elbow_score"]), ("KNEE", fb["knee_score"]), ("POSTURE", fb["lean_score"])]
+                if sport_key == "netball":
+                    score_items += [("SHOT HEIGHT", fb["shot_height_score"]), ("DIRECTION", fb["shot_direction_score"])]
+            if b_front_result:
+                score_items += [("ALIGNMENT", fb["alignment_score"]), ("SHOULDERS", fb["shoulder_level_score"]), ("FINGER", fb["finger_direction_score"])]
+            render_score_grid(score_items)
+
+            c = CRITERIA[sport_key]
+            if b_side_result:
+                render_feedback("ELBOW", fb["elbow_score"], fb["elbow_best"], fb["elbow_yourform"], None)
+                render_feedback("KNEE", fb["knee_score"], fb["knee_best"], fb["knee_yourform"], None)
+                render_feedback("POSTURE", fb["lean_score"], fb["lean_best"], fb["lean_yourform"], None)
+                if sport_key == "netball":
+                    render_feedback("SHOT HEIGHT", fb["shot_height_score"], fb["shot_height_best"], fb["shot_height_yourform"], None)
+                    render_feedback("DIRECTION", fb["shot_direction_score"], fb["shot_direction_best"], fb["shot_direction_yourform"], None)
+            if b_front_result:
+                render_feedback("ALIGNMENT", fb["alignment_score"], fb["alignment_best"], fb["alignment_yourform"], None)
+                render_feedback("SHOULDERS", fb["shoulder_level_score"], fb["shoulder_level_best"], fb["shoulder_level_yourform"], None)
+                render_feedback("FINGER", fb["finger_direction_score"], fb["finger_direction_best"], fb["finger_direction_yourform"], None)
+
+elif analyze_btn and can_analyze:
+    # ===== 개별 분석 모드 (기존) =====
     # --- 이전 분석 결과 메모리 정리 ---
     for _old_key in ["_prev_side_result", "_prev_front_result"]:
         if _old_key in st.session_state:
