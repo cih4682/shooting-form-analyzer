@@ -795,20 +795,21 @@ def _parse_drive_id(url: str):
         return m.group(1)
     return None
 
-def _download_drive_file(file_id: str) -> bytes | None:
-    """Google Drive에서 파일을 다운로드한다 (공개/링크 공유 필요)."""
+def _download_drive_file(file_id: str, api_key: str = None) -> bytes | None:
+    """Google Drive에서 파일을 다운로드한다."""
     session = requests.Session()
-    # 방법 1: confirm=t 파라미터로 바로 다운로드
-    url = f"https://drive.google.com/drive/folders/1zUqZZn-0PAJ3ZWBwK-ySStVd8im_3efh/uc?export=download&confirm=t&id={file_id}"
     headers = {"User-Agent": "Mozilla/5.0"}
-    resp = session.get(url, headers=headers, timeout=60, allow_redirects=True)
-    if resp.status_code == 200:
-        data = resp.content
-        if len(data) > 1000 and b"<!DOCTYPE" not in data[:500]:
-            return data
-    # 방법 2: Drive API 직접 접근
-    url2 = f"https://www.googleapis.com/drive/v3/files/{file_id}?alt=media"
-    resp2 = session.get(url2, headers=headers, timeout=60)
+    # 방법 1: API 키로 다운로드 (가장 확실)
+    if api_key:
+        url = f"https://www.googleapis.com/drive/v3/files/{file_id}?alt=media&key={api_key}"
+        resp = session.get(url, headers=headers, timeout=60)
+        if resp.status_code == 200:
+            data = resp.content
+            if len(data) > 1000 and b"<!DOCTYPE" not in data[:500]:
+                return data
+    # 방법 2: confirm=t 파라미터로 다운로드
+    url2 = f"https://drive.google.com/uc?export=download&confirm=t&id={file_id}"
+    resp2 = session.get(url2, headers=headers, timeout=60, allow_redirects=True)
     if resp2.status_code == 200:
         data2 = resp2.content
         if len(data2) > 1000 and b"<!DOCTYPE" not in data2[:500]:
@@ -892,12 +893,12 @@ elif upload_mode == "Google Drive":
 
             if side_pick != "(선택 안 함)":
                 with st.spinner("측면 영상 다운로드 중..."):
-                    side_drive_bytes = _download_drive_file(file_map[side_pick])
+                    side_drive_bytes = _download_drive_file(file_map[side_pick], drive_api_key)
                 if not side_drive_bytes:
                     st.error("측면 영상을 다운로드할 수 없습니다.")
             if front_pick != "(선택 안 함)":
                 with st.spinner("정면 영상 다운로드 중..."):
-                    front_drive_bytes = _download_drive_file(file_map[front_pick])
+                    front_drive_bytes = _download_drive_file(file_map[front_pick], drive_api_key)
                 if not front_drive_bytes:
                     st.error("정면 영상을 다운로드할 수 없습니다.")
 
