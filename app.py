@@ -955,6 +955,252 @@ st.markdown("<br>", unsafe_allow_html=True)
 analyze_btn = st.button("ANALYZE", disabled=(not can_analyze), use_container_width=True)
 
 # ---------------------------------------------------------------------------
+# 리포트 HTML 생성
+# ---------------------------------------------------------------------------
+def _generate_report_html(sport_label, all_scores, fb, side_result, front_result):
+    """분석 결과를 HTML 리포트로 생성"""
+    from datetime import datetime
+    date_str = datetime.now().strftime("%Y년 %m월 %d일 %H:%M")
+    avg_score = round(sum(all_scores) / len(all_scores)) if all_scores else 0
+
+    score_rows = ""
+    score_keys = []
+    if side_result:
+        score_keys += [("ELBOW", "elbow"), ("KNEE", "knee"), ("POSTURE", "lean")]
+        if "shot_height_score" in fb:
+            score_keys += [("SHOT HEIGHT", "shot_height"), ("DIRECTION", "shot_direction")]
+    if front_result:
+        score_keys += [("ALIGNMENT", "alignment"), ("SHOULDERS", "shoulder_level"), ("FINGER", "finger_direction")]
+
+    for label, key in score_keys:
+        score = fb.get(f"{key}_score", 0)
+        best = fb.get(f"{key}_best", "")
+        yourform = fb.get(f"{key}_yourform", "")
+        color = "#00D4AA" if score >= 90 else "#00A3FF" if score >= 70 else "#FFB800" if score >= 50 else "#FF4757"
+        score_rows += f"""
+        <div style="border:1px solid #333; border-radius:12px; padding:16px; margin-bottom:12px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                <span style="font-weight:700; font-size:1rem;">{label}</span>
+                <span style="font-weight:800; font-size:1.3rem; color:{color};">{score}점</span>
+            </div>
+            <div style="border-left:3px solid #00D4AA; padding:8px 12px; margin:6px 0; background:#0D1F17; border-radius:0 8px 8px 0;">
+                <div style="color:#00D4AA; font-weight:700; font-size:0.8rem; margin-bottom:2px;">BEST</div>
+                <div style="font-size:0.85rem; line-height:1.5; color:#C0E8D8;">{best}</div>
+            </div>
+            <div style="border-left:3px solid #FF4757; padding:8px 12px; margin:6px 0; background:#1F0D10; border-radius:0 8px 8px 0;">
+                <div style="color:#FF4757; font-weight:700; font-size:0.8rem; margin-bottom:2px;">YOUR FORM</div>
+                <div style="font-size:0.85rem; line-height:1.5; color:#E8C0C4;">{yourform}</div>
+            </div>
+        </div>
+        """
+
+    grade = "Excellent!" if avg_score >= 90 else "Good!" if avg_score >= 70 else "Keep Practicing!"
+    sc_color = "#00D4AA" if avg_score >= 90 else "#00A3FF" if avg_score >= 70 else "#FFB800" if avg_score >= 50 else "#FF4757"
+
+    html = f"""<!DOCTYPE html>
+<html><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css');
+body {{ font-family: 'Pretendard Variable', sans-serif; background: #0A0A0F; color: #E8E8ED; margin: 0; padding: 20px; }}
+.container {{ max-width: 600px; margin: 0 auto; }}
+.header {{ text-align: center; padding: 24px 0; }}
+.title {{ font-size: 1.8rem; font-weight: 800; background: linear-gradient(135deg, #00D4AA, #00A3FF); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }}
+.subtitle {{ color: #8888A0; font-size: 0.9rem; margin-top: 4px; }}
+.overall {{ text-align: center; padding: 20px 0; }}
+.score-circle {{ display: inline-flex; width: 120px; height: 120px; border-radius: 50%; align-items: center; justify-content: center; flex-direction: column; background: linear-gradient(135deg, rgba(0,212,170,0.15), rgba(0,163,255,0.15)); border: 3px solid {sc_color}; }}
+.score-num {{ font-size: 2.5rem; font-weight: 900; color: {sc_color}; }}
+.footer {{ text-align: center; color: #555; font-size: 0.75rem; padding: 20px 0; }}
+</style></head><body>
+<div class="container">
+    <div class="header">
+        <div class="title">Shot Form Analyzer</div>
+        <div class="subtitle">{sport_label} · {date_str}</div>
+    </div>
+    <div class="overall">
+        <div class="score-circle">
+            <div class="score-num">{avg_score}</div>
+            <div style="font-size:0.65rem; color:#8888A0; text-transform:uppercase; letter-spacing:1px;">OVERALL</div>
+        </div>
+        <div style="font-size:1rem; font-weight:700; margin-top:8px; color:#E8E8ED;">{grade}</div>
+    </div>
+    {score_rows}
+    <div class="footer">Made by 세종넷볼협회</div>
+</div>
+</body></html>"""
+    return html
+
+
+# ---------------------------------------------------------------------------
+# 공통 결과 렌더링 함수 (개별/배치 동일)
+# ---------------------------------------------------------------------------
+def _render_result(side_result, front_result, sport_key, sport_label):
+    """분석 결과를 렌더링한다. 개별/배치 모두 이 함수를 호출."""
+    fb_kwargs = {}
+    if side_result:
+        fb_kwargs["elbow_angle"] = side_result["elbow_angle"]
+        fb_kwargs["knee_angle"] = side_result["knee_angle"]
+        fb_kwargs["lean_angle"] = side_result["lean_angle"]
+        if sport_key == "netball":
+            fb_kwargs["shot_height_above_head"] = side_result["shot_height_above_head"]
+            fb_kwargs["shot_height_in_front"] = side_result.get("shot_height_in_front", False)
+            fb_kwargs["shot_direction_angle"] = side_result["shot_direction_angle"]
+    if front_result:
+        fb_kwargs["alignment_angle"] = front_result["alignment_angle"]
+        fb_kwargs["shoulder_level_angle"] = front_result["shoulder_level_angle"]
+        fb_kwargs["finger_direction_angle"] = front_result["finger_direction_angle"]
+
+    fb = generate_feedback(sport_key, **fb_kwargs)
+
+    st.markdown('<div class="section-divider"></div>', unsafe_allow_html=True)
+
+    # 총점
+    all_scores = []
+    if side_result:
+        all_scores += [fb["elbow_score"], fb["knee_score"], fb["lean_score"]]
+        if sport_key == "netball":
+            all_scores += [fb["shot_height_score"], fb["shot_direction_score"]]
+    if front_result:
+        all_scores += [fb["alignment_score"], fb["shoulder_level_score"], fb["finger_direction_score"]]
+
+    render_overall(all_scores)
+    st.markdown('<div class="section-divider"></div>', unsafe_allow_html=True)
+
+    # 분석 프레임
+    frame_cols_count = (2 if side_result else 0) + (1 if front_result else 0)
+    frame_cols = st.columns(max(frame_cols_count, 1))
+    col_idx = 0
+
+    if side_result:
+        with frame_cols[col_idx]:
+            st.markdown('<div class="frame-container"><div class="frame-label">Release</div></div>', unsafe_allow_html=True)
+            release_img = draw_skeleton(
+                side_result["release_frame"],
+                side_result["release_landmarks"],
+                angles_text=[
+                    f"Elbow: {side_result['elbow_angle']}",
+                    f"Lean: {side_result['lean_angle']}",
+                ],
+            )
+            st.image(release_img, use_container_width=True)
+        col_idx += 1
+
+        with frame_cols[col_idx]:
+            st.markdown('<div class="frame-container"><div class="frame-label">Setup</div></div>', unsafe_allow_html=True)
+            setup_img = draw_skeleton(
+                side_result["setup_frame"],
+                side_result["setup_landmarks"],
+                angles_text=[f"Knee: {side_result['knee_angle']}"],
+            )
+            st.image(setup_img, use_container_width=True)
+        col_idx += 1
+
+    if front_result:
+        with frame_cols[col_idx]:
+            st.markdown('<div class="frame-container"><div class="frame-label">Front</div></div>', unsafe_allow_html=True)
+            front_img = draw_front_skeleton(
+                front_result["front_frame"],
+                front_result["front_landmarks"],
+                angles_text=[
+                    f"Align: {front_result['alignment_angle']}",
+                    f"Shoulder: {front_result['shoulder_level_angle']}",
+                ],
+            )
+            st.image(front_img, use_container_width=True)
+
+    st.markdown('<div class="section-divider"></div>', unsafe_allow_html=True)
+
+    # 점수 카드
+    score_items = []
+    if side_result:
+        score_items += [
+            ("ELBOW", fb["elbow_score"]),
+            ("KNEE", fb["knee_score"]),
+            ("POSTURE", fb["lean_score"]),
+        ]
+        if sport_key == "netball":
+            score_items += [
+                ("SHOT HEIGHT", fb["shot_height_score"]),
+                ("DIRECTION", fb["shot_direction_score"]),
+            ]
+    if front_result:
+        score_items += [
+            ("ALIGNMENT", fb["alignment_score"]),
+            ("SHOULDERS", fb["shoulder_level_score"]),
+            ("FINGER", fb["finger_direction_score"]),
+        ]
+    render_score_grid(score_items)
+
+    st.markdown('<div class="section-divider"></div>', unsafe_allow_html=True)
+
+    # 피드백 + 각도 비교 이미지
+    c = CRITERIA[sport_key]
+
+    if side_result:
+        rl = side_result["release_landmarks"]
+        sl = side_result["setup_landmarks"]
+
+        elbow_img = draw_angle_comparison(
+            side_result["release_frame"],
+            rl["shoulder"], rl["elbow"], rl["wrist"],
+            side_result["elbow_angle"],
+            c["elbow"]["ideal_min"], c["elbow"]["ideal_max"],
+            label="ELBOW",
+        )
+        render_feedback("ELBOW", fb["elbow_score"], fb["elbow_best"], fb["elbow_yourform"], elbow_img)
+
+        knee_img = draw_angle_comparison(
+            side_result["setup_frame"], sl["hip"], sl["knee"], sl["ankle"],
+            side_result["knee_angle"], c["knee"]["ideal_min"], c["knee"]["ideal_max"], label="KNEE")
+        render_feedback("KNEE", fb["knee_score"], fb["knee_best"], fb["knee_yourform"], knee_img)
+
+        lean_img = draw_lean_comparison(
+            side_result["release_frame"], rl["shoulder"], rl["hip"],
+            side_result["lean_angle"], c["lean"]["ideal_max"], label="POSTURE")
+        render_feedback("POSTURE", fb["lean_score"], fb["lean_best"], fb["lean_yourform"], lean_img)
+
+        if sport_key == "netball":
+            height_img = draw_shot_height_comparison(
+                side_result["setup_frame"], sl, side_result["shot_height_above_head"])
+            render_feedback("SHOT HEIGHT", fb["shot_height_score"], fb["shot_height_best"], fb["shot_height_yourform"], height_img)
+
+            direction_img = draw_shot_direction_comparison(
+                side_result["release_frame"], rl, side_result["shot_direction_angle"])
+            render_feedback("DIRECTION", fb["shot_direction_score"], fb["shot_direction_best"], fb["shot_direction_yourform"], direction_img)
+
+    if front_result:
+        fl = front_result["front_landmarks"]
+
+        align_img = draw_front_comparison(
+            front_result["front_frame"], fl, "alignment",
+            front_result["alignment_angle"], c["alignment"]["ideal_max"], "ALIGNMENT")
+        render_feedback("ALIGNMENT", fb["alignment_score"], fb["alignment_best"], fb["alignment_yourform"], align_img)
+
+        shoulder_img = draw_front_comparison(
+            front_result["front_frame"], fl, "shoulder_level",
+            front_result["shoulder_level_angle"], c["shoulder_level"]["ideal_max"], "SHOULDERS")
+        render_feedback("SHOULDERS", fb["shoulder_level_score"], fb["shoulder_level_best"], fb["shoulder_level_yourform"], shoulder_img)
+
+        finger_img = draw_front_comparison(
+            front_result["front_frame"], fl, "finger_direction",
+            front_result["finger_direction_angle"], c["finger_direction"]["ideal_max"], "FINGER")
+        render_feedback("FINGER", fb["finger_direction_score"], fb["finger_direction_best"], fb["finger_direction_yourform"], finger_img)
+
+    # 리포트 다운로드
+    report_html = _generate_report_html(sport_label, all_scores, fb, side_result, front_result)
+    st.download_button(
+        label="리포트 다운로드 (HTML)",
+        data=report_html,
+        file_name="shot_analysis_report.html",
+        mime="text/html",
+        use_container_width=True,
+        key=f"report_{id(side_result)}_{id(front_result)}",
+    )
+
+    return all_scores, fb
+
+
+# ---------------------------------------------------------------------------
 # 분석 실행
 # ---------------------------------------------------------------------------
 if analyze_btn and can_analyze and len(batch_pairs) > 0:
@@ -965,7 +1211,7 @@ if analyze_btn and can_analyze and len(batch_pairs) > 0:
         unsafe_allow_html=True,
     )
     progress = st.progress(0)
-    batch_results = []
+    batch_summary = []
 
     for idx, (student_name, front_fid, side_fid, fn_front, fn_side) in enumerate(batch_pairs):
         progress.progress((idx) / len(batch_pairs), text=f"{student_name} 분석 중... ({idx+1}/{len(batch_pairs)})")
@@ -973,7 +1219,6 @@ if analyze_btn and can_analyze and len(batch_pairs) > 0:
         b_side_result = None
         b_front_result = None
 
-        # 정면 다운로드 & 분석
         if front_fid:
             try:
                 fb_bytes = _download_drive_file(front_fid)
@@ -985,7 +1230,6 @@ if analyze_btn and can_analyze and len(batch_pairs) > 0:
             except Exception:
                 b_front_result = None
 
-        # 측면 다운로드 & 분석
         if side_fid:
             try:
                 sb_bytes = _download_drive_file(side_fid)
@@ -1000,134 +1244,46 @@ if analyze_btn and can_analyze and len(batch_pairs) > 0:
         gc.collect()
 
         if b_side_result or b_front_result:
-            fb_kwargs = {}
-            if b_side_result:
-                fb_kwargs["elbow_angle"] = b_side_result["elbow_angle"]
-                fb_kwargs["knee_angle"] = b_side_result["knee_angle"]
-                fb_kwargs["lean_angle"] = b_side_result["lean_angle"]
-                if sport_key == "netball":
-                    fb_kwargs["shot_height_above_head"] = b_side_result["shot_height_above_head"]
-                    fb_kwargs["shot_height_in_front"] = b_side_result.get("shot_height_in_front", False)
-                    fb_kwargs["shot_direction_angle"] = b_side_result["shot_direction_angle"]
-            if b_front_result:
-                fb_kwargs["alignment_angle"] = b_front_result["alignment_angle"]
-                fb_kwargs["shoulder_level_angle"] = b_front_result["shoulder_level_angle"]
-                fb_kwargs["finger_direction_angle"] = b_front_result["finger_direction_angle"]
-
-            fb = generate_feedback(sport_key, **fb_kwargs)
-            all_scores = []
-            if b_side_result:
-                all_scores += [fb["elbow_score"], fb["knee_score"], fb["lean_score"]]
-                if sport_key == "netball":
-                    all_scores += [fb["shot_height_score"], fb["shot_direction_score"]]
-            if b_front_result:
-                all_scores += [fb["alignment_score"], fb["shoulder_level_score"], fb["finger_direction_score"]]
-            avg_score = round(sum(all_scores) / len(all_scores)) if all_scores else 0
-            batch_results.append((student_name, avg_score, all_scores, fb, b_side_result, b_front_result))
+            st.markdown(
+                f'<h2 style="text-align:center;color:#00D4AA;margin-top:2rem;">{student_name}</h2>',
+                unsafe_allow_html=True,
+            )
+            scores, fb = _render_result(b_side_result, b_front_result, sport_key, sport)
+            avg = round(sum(scores) / len(scores)) if scores else 0
+            batch_summary.append((student_name, avg))
         else:
-            batch_results.append((student_name, 0, [], None, None, None))
+            batch_summary.append((student_name, 0))
 
     progress.progress(1.0, text="분석 완료!")
 
-    # --- 배치 결과 요약 테이블 ---
+    # --- 전체 요약 테이블 ---
     st.markdown('<div class="section-divider"></div>', unsafe_allow_html=True)
+    st.markdown('<h2 style="text-align:center;color:#00D4AA;">전체 요약</h2>', unsafe_allow_html=True)
     summary_html = '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;text-align:center;">'
     summary_html += '<tr style="border-bottom:2px solid #333;">'
     summary_html += '<th style="padding:10px;color:#8888A0;">이름</th>'
     summary_html += '<th style="padding:10px;color:#8888A0;">총점</th>'
-    summary_html += '<th style="padding:10px;color:#8888A0;">등급</th>'
-    summary_html += '<th style="padding:10px;color:#8888A0;">핵심 피드백</th></tr>'
+    summary_html += '<th style="padding:10px;color:#8888A0;">등급</th></tr>'
 
-    for student_name, avg_score, _, fb, sr, fr in batch_results:
-        if avg_score == 0:
-            color = "#666"
-            grade = "-"
-            tip = "분석 실패"
-        elif avg_score >= 90:
-            color = "#00D4AA"
-            grade = "Excellent"
-            tip = "훌륭합니다!"
-        elif avg_score >= 70:
-            color = "#00A3FF"
-            grade = "Good"
-            # 가장 낮은 항목 찾기
-            tip = ""
-            if fb:
-                worst_score = 100
-                worst_key = ""
-                for k in ["elbow", "knee", "lean", "alignment", "shoulder_level"]:
-                    s = fb.get(f"{k}_score")
-                    if s is not None and s < worst_score:
-                        worst_score = s
-                        worst_key = k
-                if worst_key:
-                    tip = fb.get(f"{worst_key}_yourform", "")[:40]
-        elif avg_score >= 50:
-            color = "#FFB800"
-            grade = "Fair"
-            tip = ""
-            if fb:
-                worst_score = 100
-                worst_key = ""
-                for k in ["elbow", "knee", "lean", "alignment", "shoulder_level"]:
-                    s = fb.get(f"{k}_score")
-                    if s is not None and s < worst_score:
-                        worst_score = s
-                        worst_key = k
-                if worst_key:
-                    tip = fb.get(f"{worst_key}_yourform", "")[:40]
+    for sname, savg in batch_summary:
+        if savg == 0:
+            color, grade = "#666", "-"
+        elif savg >= 90:
+            color, grade = "#00D4AA", "Excellent"
+        elif savg >= 70:
+            color, grade = "#00A3FF", "Good"
+        elif savg >= 50:
+            color, grade = "#FFB800", "Fair"
         else:
-            color = "#FF4757"
-            grade = "Needs Work"
-            tip = ""
-            if fb:
-                worst_score = 100
-                worst_key = ""
-                for k in ["elbow", "knee", "lean", "alignment", "shoulder_level"]:
-                    s = fb.get(f"{k}_score")
-                    if s is not None and s < worst_score:
-                        worst_score = s
-                        worst_key = k
-                if worst_key:
-                    tip = fb.get(f"{worst_key}_yourform", "")[:40]
-
+            color, grade = "#FF4757", "Needs Work"
         summary_html += (
             f'<tr style="border-bottom:1px solid #222;">'
-            f'<td style="padding:10px;font-weight:700;">{student_name}</td>'
-            f'<td style="padding:10px;font-weight:800;font-size:1.2rem;color:{color};">{avg_score}</td>'
-            f'<td style="padding:10px;color:{color};">{grade}</td>'
-            f'<td style="padding:10px;color:#999;font-size:0.85rem;text-align:left;">{tip}</td></tr>'
+            f'<td style="padding:10px;font-weight:700;">{sname}</td>'
+            f'<td style="padding:10px;font-weight:800;font-size:1.2rem;color:{color};">{savg}</td>'
+            f'<td style="padding:10px;color:{color};">{grade}</td></tr>'
         )
-
     summary_html += '</table></div>'
     st.markdown(summary_html, unsafe_allow_html=True)
-
-    # --- 학생별 상세 보기 (접기) ---
-    for student_name, avg_score, all_scores, fb, b_side_result, b_front_result in batch_results:
-        if fb is None:
-            continue
-        with st.expander(f"{student_name} — {avg_score}점 상세 보기"):
-            score_items = []
-            if b_side_result:
-                score_items += [("ELBOW", fb["elbow_score"]), ("KNEE", fb["knee_score"]), ("POSTURE", fb["lean_score"])]
-                if sport_key == "netball":
-                    score_items += [("SHOT HEIGHT", fb["shot_height_score"]), ("DIRECTION", fb["shot_direction_score"])]
-            if b_front_result:
-                score_items += [("ALIGNMENT", fb["alignment_score"]), ("SHOULDERS", fb["shoulder_level_score"]), ("FINGER", fb["finger_direction_score"])]
-            render_score_grid(score_items)
-
-            c = CRITERIA[sport_key]
-            if b_side_result:
-                render_feedback("ELBOW", fb["elbow_score"], fb["elbow_best"], fb["elbow_yourform"], None)
-                render_feedback("KNEE", fb["knee_score"], fb["knee_best"], fb["knee_yourform"], None)
-                render_feedback("POSTURE", fb["lean_score"], fb["lean_best"], fb["lean_yourform"], None)
-                if sport_key == "netball":
-                    render_feedback("SHOT HEIGHT", fb["shot_height_score"], fb["shot_height_best"], fb["shot_height_yourform"], None)
-                    render_feedback("DIRECTION", fb["shot_direction_score"], fb["shot_direction_best"], fb["shot_direction_yourform"], None)
-            if b_front_result:
-                render_feedback("ALIGNMENT", fb["alignment_score"], fb["alignment_best"], fb["alignment_yourform"], None)
-                render_feedback("SHOULDERS", fb["shoulder_level_score"], fb["shoulder_level_best"], fb["shoulder_level_yourform"], None)
-                render_feedback("FINGER", fb["finger_direction_score"], fb["finger_direction_best"], fb["finger_direction_yourform"], None)
 
 elif analyze_btn and can_analyze:
     # ===== 개별 분석 모드 (기존) =====
@@ -1178,251 +1334,7 @@ elif analyze_btn and can_analyze:
             front_result = None
 
     if side_result or front_result:
-        # 피드백 생성
-        fb_kwargs = {}
-        if side_result:
-            fb_kwargs["elbow_angle"] = side_result["elbow_angle"]
-            fb_kwargs["knee_angle"] = side_result["knee_angle"]
-            fb_kwargs["lean_angle"] = side_result["lean_angle"]
-            if sport_key == "netball":
-                fb_kwargs["shot_height_above_head"] = side_result["shot_height_above_head"]
-                fb_kwargs["shot_height_in_front"] = side_result.get("shot_height_in_front", False)
-                fb_kwargs["shot_direction_angle"] = side_result["shot_direction_angle"]
-        if front_result:
-            fb_kwargs["alignment_angle"] = front_result["alignment_angle"]
-            fb_kwargs["shoulder_level_angle"] = front_result["shoulder_level_angle"]
-            fb_kwargs["finger_direction_angle"] = front_result["finger_direction_angle"]
-
-        fb = generate_feedback(sport_key, **fb_kwargs)
-
-        st.markdown('<div class="section-divider"></div>', unsafe_allow_html=True)
-
-        # =================================================================
-        # 총점
-        # =================================================================
-        all_scores = []
-        if side_result:
-            all_scores += [fb["elbow_score"], fb["knee_score"], fb["lean_score"]]
-            if sport_key == "netball":
-                all_scores += [fb["shot_height_score"], fb["shot_direction_score"]]
-        if front_result:
-            all_scores += [fb["alignment_score"], fb["shoulder_level_score"], fb["finger_direction_score"]]
-
-        render_overall(all_scores)
-        st.markdown('<div class="section-divider"></div>', unsafe_allow_html=True)
-
-        # =================================================================
-        # 분석 프레임
-        # =================================================================
-        frame_cols_count = (2 if side_result else 0) + (1 if front_result else 0)
-        frame_cols = st.columns(max(frame_cols_count, 1))
-        col_idx = 0
-
-        if side_result:
-            with frame_cols[col_idx]:
-                st.markdown('<div class="frame-container"><div class="frame-label">Release</div></div>', unsafe_allow_html=True)
-                release_img = draw_skeleton(
-                    side_result["release_frame"],
-                    side_result["release_landmarks"],
-                    angles_text=[
-                        f"Elbow: {side_result['elbow_angle']}",
-                        f"Lean: {side_result['lean_angle']}",
-                    ],
-                )
-                st.image(release_img, use_container_width=True)
-            col_idx += 1
-
-            with frame_cols[col_idx]:
-                st.markdown('<div class="frame-container"><div class="frame-label">Setup</div></div>', unsafe_allow_html=True)
-                setup_img = draw_skeleton(
-                    side_result["setup_frame"],
-                    side_result["setup_landmarks"],
-                    angles_text=[f"Knee: {side_result['knee_angle']}"],
-                )
-                st.image(setup_img, use_container_width=True)
-            col_idx += 1
-
-        if front_result:
-            with frame_cols[col_idx]:
-                st.markdown('<div class="frame-container"><div class="frame-label">Front</div></div>', unsafe_allow_html=True)
-                front_img = draw_front_skeleton(
-                    front_result["front_frame"],
-                    front_result["front_landmarks"],
-                    angles_text=[
-                        f"Align: {front_result['alignment_angle']}",
-                        f"Shoulder: {front_result['shoulder_level_angle']}",
-                    ],
-                )
-                st.image(front_img, use_container_width=True)
-
-        st.markdown('<div class="section-divider"></div>', unsafe_allow_html=True)
-
-        # =================================================================
-        # 점수 카드 (CSS 그리드 — 모바일 2열, 데스크톱 3열)
-        # =================================================================
-        score_items = []
-        if side_result:
-            score_items += [
-                ("ELBOW", fb["elbow_score"]),
-                ("KNEE", fb["knee_score"]),
-                ("POSTURE", fb["lean_score"]),
-            ]
-            if sport_key == "netball":
-                score_items += [
-                    ("SHOT HEIGHT", fb["shot_height_score"]),
-                    ("DIRECTION", fb["shot_direction_score"]),
-                ]
-        if front_result:
-            score_items += [
-                ("ALIGNMENT", fb["alignment_score"]),
-                ("SHOULDERS", fb["shoulder_level_score"]),
-                ("FINGER", fb["finger_direction_score"]),
-            ]
-        render_score_grid(score_items)
-
-        st.markdown('<div class="section-divider"></div>', unsafe_allow_html=True)
-
-        # =================================================================
-        # 피드백 + 각도 비교 이미지
-        # =================================================================
-        c = CRITERIA[sport_key]
-
-        if side_result:
-            rl = side_result["release_landmarks"]
-            sl = side_result["setup_landmarks"]
-
-            # 팔꿈치 비교 이미지
-            elbow_img = draw_angle_comparison(
-                side_result["release_frame"],
-                rl["shoulder"], rl["elbow"], rl["wrist"],
-                side_result["elbow_angle"],
-                c["elbow"]["ideal_min"], c["elbow"]["ideal_max"],
-                label="ELBOW",
-            )
-            render_feedback("ELBOW", fb["elbow_score"], fb["elbow_best"], fb["elbow_yourform"], elbow_img)
-
-            knee_img = draw_angle_comparison(
-                side_result["setup_frame"], sl["hip"], sl["knee"], sl["ankle"],
-                side_result["knee_angle"], c["knee"]["ideal_min"], c["knee"]["ideal_max"], label="KNEE")
-            render_feedback("KNEE", fb["knee_score"], fb["knee_best"], fb["knee_yourform"], knee_img)
-
-            lean_img = draw_lean_comparison(
-                side_result["release_frame"], rl["shoulder"], rl["hip"],
-                side_result["lean_angle"], c["lean"]["ideal_max"], label="POSTURE")
-            render_feedback("POSTURE", fb["lean_score"], fb["lean_best"], fb["lean_yourform"], lean_img)
-
-            if sport_key == "netball":
-                height_img = draw_shot_height_comparison(
-                    side_result["setup_frame"], sl, side_result["shot_height_above_head"])
-                render_feedback("SHOT HEIGHT", fb["shot_height_score"], fb["shot_height_best"], fb["shot_height_yourform"], height_img)
-
-                direction_img = draw_shot_direction_comparison(
-                    side_result["release_frame"], rl, side_result["shot_direction_angle"])
-                render_feedback("DIRECTION", fb["shot_direction_score"], fb["shot_direction_best"], fb["shot_direction_yourform"], direction_img)
-
-        if front_result:
-            fl = front_result["front_landmarks"]
-
-            align_img = draw_front_comparison(
-                front_result["front_frame"], fl, "alignment",
-                front_result["alignment_angle"], c["alignment"]["ideal_max"], "ALIGNMENT")
-            render_feedback("ALIGNMENT", fb["alignment_score"], fb["alignment_best"], fb["alignment_yourform"], align_img)
-
-            shoulder_img = draw_front_comparison(
-                front_result["front_frame"], fl, "shoulder_level",
-                front_result["shoulder_level_angle"], c["shoulder_level"]["ideal_max"], "SHOULDERS")
-            render_feedback("SHOULDERS", fb["shoulder_level_score"], fb["shoulder_level_best"], fb["shoulder_level_yourform"], shoulder_img)
-
-            finger_img = draw_front_comparison(
-                front_result["front_frame"], fl, "finger_direction",
-                front_result["finger_direction_angle"], c["finger_direction"]["ideal_max"], "FINGER")
-            render_feedback("FINGER", fb["finger_direction_score"], fb["finger_direction_best"], fb["finger_direction_yourform"], finger_img)
-
-# ---------------------------------------------------------------------------
-# 리포트 다운로드
-# ---------------------------------------------------------------------------
-def _generate_report_html(sport_label, all_scores, fb, side_result, front_result):
-    """분석 결과를 HTML 리포트로 생성"""
-    from datetime import datetime
-    date_str = datetime.now().strftime("%Y년 %m월 %d일 %H:%M")
-    avg_score = round(sum(all_scores) / len(all_scores)) if all_scores else 0
-
-    # 점수 항목 HTML
-    score_rows = ""
-    score_keys = []
-    if side_result:
-        score_keys += [("ELBOW", "elbow"), ("KNEE", "knee"), ("POSTURE", "lean")]
-        if "shot_height_score" in fb:
-            score_keys += [("SHOT HEIGHT", "shot_height"), ("DIRECTION", "shot_direction")]
-    if front_result:
-        score_keys += [("ALIGNMENT", "alignment"), ("SHOULDERS", "shoulder_level"), ("FINGER", "finger_direction")]
-
-    for label, key in score_keys:
-        score = fb.get(f"{key}_score", 0)
-        best = fb.get(f"{key}_best", "")
-        yourform = fb.get(f"{key}_yourform", "")
-        color = "#00D4AA" if score >= 90 else "#00A3FF" if score >= 70 else "#FFB800" if score >= 50 else "#FF4757"
-        score_rows += f"""
-        <div style="border:1px solid #333; border-radius:12px; padding:16px; margin-bottom:12px;">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-                <span style="font-weight:700; font-size:1rem;">{label}</span>
-                <span style="font-weight:800; font-size:1.3rem; color:{color};">{score}점</span>
-            </div>
-            <div style="border-left:3px solid #00D4AA; padding:8px 12px; margin:6px 0; background:#0D1F17; border-radius:0 8px 8px 0;">
-                <div style="color:#00D4AA; font-weight:700; font-size:0.8rem; margin-bottom:2px;">BEST</div>
-                <div style="font-size:0.85rem; line-height:1.5; color:#C0E8D8;">{best}</div>
-            </div>
-            <div style="border-left:3px solid #FF4757; padding:8px 12px; margin:6px 0; background:#1F0D10; border-radius:0 8px 8px 0;">
-                <div style="color:#FF4757; font-weight:700; font-size:0.8rem; margin-bottom:2px;">YOUR FORM</div>
-                <div style="font-size:0.85rem; line-height:1.5; color:#E8C0C4;">{yourform}</div>
-            </div>
-        </div>
-        """
-
-    grade = "Excellent!" if avg_score >= 90 else "Good!" if avg_score >= 70 else "Keep Practicing!"
-
-    html = f"""<!DOCTYPE html>
-<html><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<style>
-@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css');
-body {{ font-family: 'Pretendard Variable', sans-serif; background: #0A0A0F; color: #E8E8ED; margin: 0; padding: 20px; }}
-.container {{ max-width: 600px; margin: 0 auto; }}
-.header {{ text-align: center; padding: 24px 0; }}
-.title {{ font-size: 1.8rem; font-weight: 800; background: linear-gradient(135deg, #00D4AA, #00A3FF); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }}
-.subtitle {{ color: #8888A0; font-size: 0.9rem; margin-top: 4px; }}
-.overall {{ text-align: center; padding: 20px 0; }}
-.score-circle {{ display: inline-flex; width: 120px; height: 120px; border-radius: 50%; align-items: center; justify-content: center; flex-direction: column; background: linear-gradient(135deg, rgba(0,212,170,0.15), rgba(0,163,255,0.15)); border: 3px solid {("#00D4AA" if avg_score >= 90 else "#00A3FF" if avg_score >= 70 else "#FFB800" if avg_score >= 50 else "#FF4757")}; }}
-.score-num {{ font-size: 2.5rem; font-weight: 900; color: {("#00D4AA" if avg_score >= 90 else "#00A3FF" if avg_score >= 70 else "#FFB800" if avg_score >= 50 else "#FF4757")}; }}
-.footer {{ text-align: center; color: #555; font-size: 0.75rem; padding: 20px 0; }}
-</style></head><body>
-<div class="container">
-    <div class="header">
-        <div class="title">Shot Form Analyzer</div>
-        <div class="subtitle">{sport_label} · {date_str}</div>
-    </div>
-    <div class="overall">
-        <div class="score-circle">
-            <div class="score-num">{avg_score}</div>
-            <div style="font-size:0.65rem; color:#8888A0; text-transform:uppercase; letter-spacing:1px;">OVERALL</div>
-        </div>
-        <div style="font-size:1rem; font-weight:700; margin-top:8px; color:#E8E8ED;">{grade}</div>
-    </div>
-    {score_rows}
-    <div class="footer">Made by 세종넷볼협회</div>
-</div>
-</body></html>"""
-    return html
-
-if "fb" in dir() and fb and all_scores:
-    report_html = _generate_report_html(sport, all_scores, fb, side_result, front_result)
-    st.download_button(
-        label="리포트 다운로드 (HTML)",
-        data=report_html,
-        file_name="shot_analysis_report.html",
-        mime="text/html",
-        use_container_width=True,
-    )
+        _render_result(side_result, front_result, sport_key, sport)
 
 # ---------------------------------------------------------------------------
 # 하단
