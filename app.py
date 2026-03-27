@@ -799,7 +799,7 @@ def _download_drive_file(file_id: str) -> bytes | None:
     """Google Drive에서 파일을 다운로드한다 (공개/링크 공유 필요)."""
     session = requests.Session()
     # 방법 1: confirm=t 파라미터로 바로 다운로드
-    url = f"https://drive.google.com/uc?export=download&confirm=t&id={file_id}"
+    url = f"https://drive.google.com/drive/folders/1zUqZZn-0PAJ3ZWBwK-ySStVd8im_3efh/uc?export=download&confirm=t&id={file_id}"
     headers = {"User-Agent": "Mozilla/5.0"}
     resp = session.get(url, headers=headers, timeout=60, allow_redirects=True)
     if resp.status_code == 200:
@@ -868,7 +868,7 @@ elif upload_mode == "Google Drive":
     dr_col1, dr_col2 = st.columns(2)
     with dr_col1:
         st.markdown(
-            '<a href="https://drive.google.com" target="_blank" '
+            '<a href="https://drive.google.com/drive/folders/1zUqZZn-0PAJ3ZWBwK-ySStVd8im_3efh" target="_blank" '
             'style="display:block;text-align:center;padding:14px;margin-bottom:8px;'
             'background:#1a1a2e;border:1px dashed #00D4AA;border-radius:12px;'
             'color:#00D4AA;font-weight:700;text-decoration:none;font-size:0.95rem;">'
@@ -878,7 +878,7 @@ elif upload_mode == "Google Drive":
         side_url = st.text_input("link", key="side_url", placeholder="Paste link here", label_visibility="collapsed")
     with dr_col2:
         st.markdown(
-            '<a href="https://drive.google.com" target="_blank" '
+            '<a href="https://drive.google.com/drive/folders/1zUqZZn-0PAJ3ZWBwK-ySStVd8im_3efh" target="_blank" '
             'style="display:block;text-align:center;padding:14px;margin-bottom:8px;'
             'background:#1a1a2e;border:1px dashed #00D4AA;border-radius:12px;'
             'color:#00D4AA;font-weight:700;text-decoration:none;font-size:0.95rem;">'
@@ -925,7 +925,7 @@ else:  # 폴더 일괄 분석
     )
     folder_url = st.text_input(
         "Google Drive 폴더 링크",
-        placeholder="https://drive.google.com/drive/folders/...",
+        placeholder="https://drive.google.com/drive/folders/1zUqZZn-0PAJ3ZWBwK-ySStVd8im_3efh/drive/folders/...",
     )
 
     if api_key and folder_url:
