@@ -865,46 +865,41 @@ if upload_mode == "파일 직접 업로드":
         front_video = st.file_uploader("FRONT VIEW", type=["mp4", "mov"], key="front")
 
 elif upload_mode == "Google Drive":
-    dr_col1, dr_col2 = st.columns(2)
-    with dr_col1:
-        st.markdown(
-            '<a href="https://drive.google.com/drive/folders/1zUqZZn-0PAJ3ZWBwK-ySStVd8im_3efh" target="_blank" '
-            'style="display:block;text-align:center;padding:14px;margin-bottom:8px;'
-            'background:#1a1a2e;border:1px dashed #00D4AA;border-radius:12px;'
-            'color:#00D4AA;font-weight:700;text-decoration:none;font-size:0.95rem;">'
-            'Select Side View from Google Drive</a>',
-            unsafe_allow_html=True,
-        )
-        side_url = st.text_input("link", key="side_url", placeholder="Paste link here", label_visibility="collapsed")
-    with dr_col2:
-        st.markdown(
-            '<a href="https://drive.google.com/drive/folders/1zUqZZn-0PAJ3ZWBwK-ySStVd8im_3efh" target="_blank" '
-            'style="display:block;text-align:center;padding:14px;margin-bottom:8px;'
-            'background:#1a1a2e;border:1px dashed #00D4AA;border-radius:12px;'
-            'color:#00D4AA;font-weight:700;text-decoration:none;font-size:0.95rem;">'
-            'Select Front View from Google Drive</a>',
-            unsafe_allow_html=True,
-        )
-        front_url = st.text_input("link", key="front_url", placeholder="Paste link here", label_visibility="collapsed")
+    _DRIVE_FOLDER_ID = "1zUqZZn-0PAJ3ZWBwK-ySStVd8im_3efh"
+    drive_api_key = st.text_input(
+        "Google API Key",
+        type="password",
+        placeholder="AIza...",
+        key="drive_api_key",
+        help="Google Cloud Console에서 발급한 API 키",
+    )
 
-    if side_url:
-        fid = _parse_drive_id(side_url)
-        if fid:
-            with st.spinner("측면 영상 다운로드 중..."):
-                side_drive_bytes = _download_drive_file(fid)
-            if not side_drive_bytes:
-                st.error("측면 영상을 다운로드할 수 없습니다. 공유 설정을 확인해주세요.")
+    if drive_api_key:
+        drive_files, drive_err = _list_drive_folder(_DRIVE_FOLDER_ID, drive_api_key)
+        if drive_err:
+            st.error(f"폴더 조회 실패: {drive_err}")
+        elif not drive_files:
+            st.warning("폴더에 영상 파일이 없습니다.")
         else:
-            st.error("올바른 Google Drive 링크가 아닙니다.")
-    if front_url:
-        fid = _parse_drive_id(front_url)
-        if fid:
-            with st.spinner("정면 영상 다운로드 중..."):
-                front_drive_bytes = _download_drive_file(fid)
-            if not front_drive_bytes:
-                st.error("정면 영상을 다운로드할 수 없습니다. 공유 설정을 확인해주세요.")
-        else:
-            st.error("올바른 Google Drive 링크가 아닙니다.")
+            file_names = ["(선택 안 함)"] + [f["name"] for f in drive_files]
+            file_map = {f["name"]: f["id"] for f in drive_files}
+
+            dr_col1, dr_col2 = st.columns(2)
+            with dr_col1:
+                side_pick = st.selectbox("SIDE VIEW", file_names, key="side_pick")
+            with dr_col2:
+                front_pick = st.selectbox("FRONT VIEW", file_names, key="front_pick")
+
+            if side_pick != "(선택 안 함)":
+                with st.spinner("측면 영상 다운로드 중..."):
+                    side_drive_bytes = _download_drive_file(file_map[side_pick])
+                if not side_drive_bytes:
+                    st.error("측면 영상을 다운로드할 수 없습니다.")
+            if front_pick != "(선택 안 함)":
+                with st.spinner("정면 영상 다운로드 중..."):
+                    front_drive_bytes = _download_drive_file(file_map[front_pick])
+                if not front_drive_bytes:
+                    st.error("정면 영상을 다운로드할 수 없습니다.")
 
 else:  # 폴더 일괄 분석
     st.markdown(
