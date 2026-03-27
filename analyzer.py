@@ -70,12 +70,21 @@ def _estimate_head_top_y(nose_y, eye_y):
     return eye_y - (nose_y - eye_y) * 2
 
 
+def _safe_unlink(path):
+    try:
+        if path and os.path.exists(path):
+            os.unlink(path)
+    except OSError:
+        pass
+
+
 def _open_video(video_bytes):
-    tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4")
-    tmp.write(video_bytes)
-    tmp.close()
-    cap = cv2.VideoCapture(tmp.name)
-    return cap, tmp.name
+    tmp_dir = tempfile.gettempdir()
+    tmp_path = os.path.join(tmp_dir, f"shooting_{os.getpid()}_{id(video_bytes)}.mp4")
+    with open(tmp_path, "wb") as f:
+        f.write(video_bytes)
+    cap = cv2.VideoCapture(tmp_path)
+    return cap, tmp_path
 
 
 def _create_landmarker():
@@ -112,10 +121,15 @@ def analyze_side_video(video_bytes: bytes):
         "error": None,
     }
 
-    cap, tmp_path = _open_video(video_bytes)
+    try:
+        cap, tmp_path = _open_video(video_bytes)
+    except Exception as e:
+        result["error"] = f"영상 파일 저장 실패: {e}"
+        return result
+
     if not cap.isOpened():
-        result["error"] = "영상 파일을 열 수 없습니다."
-        os.unlink(tmp_path)
+        result["error"] = "영상 파일을 열 수 없습니다. MP4(H.264) 형식으로 변환 후 다시 시도해주세요."
+        _safe_unlink(tmp_path)
         return result
 
     fps = cap.get(cv2.CAP_PROP_FPS) or 30
@@ -124,7 +138,7 @@ def analyze_side_video(video_bytes: bytes):
     if total_frames < fps:
         result["error"] = "영상이 너무 짧습니다. 슛 동작이 포함된 2~10초 영상을 올려주세요."
         cap.release()
-        os.unlink(tmp_path)
+        _safe_unlink(tmp_path)
         return result
 
     interval = max(1, int(fps / SAMPLE_FPS))
@@ -155,7 +169,7 @@ def analyze_side_video(video_bytes: bytes):
     gc.collect()
 
     if len(lm_data) < 3:
-        os.unlink(tmp_path)
+        _safe_unlink(tmp_path)
         result["error"] = "영상에서 자세를 감지할 수 없습니다. 측면에서 한 사람만 촬영된 영상을 올려주세요."
         return result
 
@@ -204,6 +218,7 @@ def analyze_side_video(video_bytes: bytes):
         valid.append((fi, lm_dict))
 
     if len(valid) < 3:
+        _safe_unlink(tmp_path)
         result["error"] = "영상에서 자세를 감지할 수 없습니다. 측면에서 한 사람만 촬영된 영상을 올려주세요."
         return result
 
@@ -231,7 +246,7 @@ def analyze_side_video(video_bytes: bytes):
 
     # --- 5단계: 필요한 프레임만 읽기 (임시파일 재사용) ---
     needed_frames = _read_frames_at(tmp_path, [release_frame_idx, setup_frame_idx])
-    os.unlink(tmp_path)
+    _safe_unlink(tmp_path)
     result["release_frame"] = needed_frames.get(release_frame_idx)
     result["setup_frame"] = needed_frames.get(setup_frame_idx)
     del needed_frames
@@ -289,10 +304,15 @@ def analyze_front_video(video_bytes: bytes):
         "front_frame": None, "front_landmarks": None, "error": None,
     }
 
-    cap, tmp_path = _open_video(video_bytes)
+    try:
+        cap, tmp_path = _open_video(video_bytes)
+    except Exception as e:
+        result["error"] = f"영상 파일 저장 실패: {e}"
+        return result
+
     if not cap.isOpened():
-        result["error"] = "정면 영상 파일을 열 수 없습니다."
-        os.unlink(tmp_path)
+        result["error"] = "정면 영상 파일을 열 수 없습니다. MP4(H.264) 형식으로 변환 후 다시 시도해주세요."
+        _safe_unlink(tmp_path)
         return result
 
     fps = cap.get(cv2.CAP_PROP_FPS) or 30
@@ -336,7 +356,7 @@ def analyze_front_video(video_bytes: bytes):
     gc.collect()
 
     if len(lm_data) < 2:
-        os.unlink(tmp_path)
+        _safe_unlink(tmp_path)
         result["error"] = "정면 영상에서 자세를 감지할 수 없습니다. 정면에서 한 사람만 촬영된 영상을 올려주세요."
         return result
 
@@ -369,7 +389,7 @@ def analyze_front_video(video_bytes: bytes):
 
     # 필요한 프레임만 읽기 (임시파일 재사용)
     needed = _read_frames_at(tmp_path, [release_frame_idx])
-    os.unlink(tmp_path)
+    _safe_unlink(tmp_path)
     result["front_frame"] = needed.get(release_frame_idx)
     result["front_landmarks"] = ld
 
