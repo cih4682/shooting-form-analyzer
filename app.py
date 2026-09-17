@@ -134,10 +134,15 @@ def _check_auth():
                             "email": new_email, "password": new_pw
                         })
                         # 승인 대기 목록에 추가
+                        # sign_up 직후의 supabase 객체는 신규 사용자 세션을 물고 있어
+                        # service 권한을 잃는다. 반드시 새 클라이언트로 insert 한다.
                         try:
-                            supabase.table("pending_users").insert({"email": new_email}).execute()
-                        except Exception:
-                            pass
+                            _init_supabase().table("pending_users").insert(
+                                {"email": new_email}
+                            ).execute()
+                        except Exception as e:
+                            if "duplicate key" not in str(e):
+                                st.warning("승인 대기 목록 등록에 실패했습니다. 관리자에게 알려주세요.")
                         st.success("회원가입 완료! 관리자 승인 후 사용할 수 있습니다.")
                     except Exception as e:
                         st.error("회원가입 실패: 이미 가입된 이메일일 수 있습니다.")
