@@ -857,6 +857,7 @@ front_video = None
 side_drive_bytes = None
 front_drive_bytes = None
 batch_pairs = []  # [(이름, front_id, side_id), ...]
+drive_key = _get_config("google", "api_key")  # secrets [google] 또는 GOOGLE_API_KEY
 
 if upload_mode == "파일 직접 업로드":
     up_col1, up_col2 = st.columns(2)
@@ -867,13 +868,15 @@ if upload_mode == "파일 직접 업로드":
 
 elif upload_mode == "Google Drive":
     _DRIVE_FOLDER_ID = "1zUqZZn-0PAJ3ZWBwK-ySStVd8im_3efh"
-    drive_api_key = st.text_input(
-        "Google API Key",
-        type="password",
-        placeholder="AIza...",
-        key="drive_api_key",
-        help="Google Cloud Console에서 발급한 API 키",
-    )
+    drive_api_key = drive_key
+    if not drive_api_key:
+        drive_api_key = st.text_input(
+            "Google API Key",
+            type="password",
+            placeholder="AIza...",
+            key="drive_api_key",
+            help="secrets.toml의 [google] api_key 또는 GOOGLE_API_KEY 환경변수로 설정하면 이 창은 사라집니다.",
+        )
 
     if drive_api_key:
         drive_files, drive_err = _list_drive_folder(_DRIVE_FOLDER_ID, drive_api_key)
@@ -913,12 +916,14 @@ else:  # 폴더 일괄 분석
         '</div>',
         unsafe_allow_html=True,
     )
-    api_key = st.text_input(
-        "Google API Key",
-        type="password",
-        placeholder="AIza...",
-        help="Google Cloud Console → API 및 서비스 → 사용자 인증 정보에서 발급",
-    )
+    api_key = drive_key
+    if not api_key:
+        api_key = st.text_input(
+            "Google API Key",
+            type="password",
+            placeholder="AIza...",
+            help="secrets.toml의 [google] api_key 또는 GOOGLE_API_KEY 환경변수로 설정하면 이 창은 사라집니다.",
+        )
     folder_url = st.text_input(
         "Google Drive 폴더 링크",
         placeholder="https://drive.google.com/drive/folders/1zUqZZn-0PAJ3ZWBwK-ySStVd8im_3efh/drive/folders/...",
@@ -1227,7 +1232,7 @@ if analyze_btn and can_analyze and len(batch_pairs) > 0:
 
         if front_fid:
             try:
-                fb_bytes = _download_drive_file(front_fid)
+                fb_bytes = _download_drive_file(front_fid, drive_key)
                 if fb_bytes:
                     b_front_result = analyze_front_video(fb_bytes)
                     del fb_bytes
@@ -1238,7 +1243,7 @@ if analyze_btn and can_analyze and len(batch_pairs) > 0:
 
         if side_fid:
             try:
-                sb_bytes = _download_drive_file(side_fid)
+                sb_bytes = _download_drive_file(side_fid, drive_key)
                 if sb_bytes:
                     b_side_result = analyze_side_video(sb_bytes)
                     del sb_bytes

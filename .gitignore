@@ -6,3 +6,5 @@ samples/
 .cursor/
 openspec/
 pose_landmarker_lite.task
+.streamlit/secrets.toml
+.env
